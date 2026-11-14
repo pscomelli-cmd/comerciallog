@@ -178,3 +178,8 @@ textarea { width: 100%; resize: vertical; } .search { width: 100%; }
 
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 40; background: var(--brand); }
 .backup { width: 100%; font-family: ui-monospace, monospace; font-size: .8rem; }
+
+.scene3d { margin: 12px 0 4px; }
+.canvas3d { width: 100%; border-radius: 8px; overflow: hidden; background: var(--surface2); touch-action: none; }
+.canvas3d canvas { display: block; }
+.canvas3d:fullscreen { height: 100% !important; border-radius: 0; background: var(--bg); }

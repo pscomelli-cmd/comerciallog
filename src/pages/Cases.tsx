@@ -3,6 +3,8 @@ import { Runner } from '../components/Runner.tsx'
 import { Rich } from '../components/Rich.tsx'
 import { useStore } from '../lib/store.tsx'
 import { PHASES, SECTORS } from '../lib/types.ts'
+import { ContainerScene } from '../components/Scene3D.tsx'
+import { PalesPresets } from './View3D.tsx'
 
 export function CasesList() {
   const { s } = useStore()
@@ -24,6 +26,8 @@ export function CasePage({ id }: { id: string }) {
     <p className="crumbs"><a href="#/casos">Casos</a> › <span className={'tag sec ' + c.sector}>{SECTORS[c.sector]}</span> {c.tipo}</p>
     <h1>{c.title}</h1>
     <details className="card brief" open><summary>Situación</summary><Rich text={c.brief} /></details>
+    {c.id === 'cajas-pales' && <details className="card brief"><summary>Verlo en 3D: los palés del escenario 2</summary><PalesPresets /></details>}
+    {c.id === 'cafe-ofertas' && <details className="card brief"><summary>Verlo en 3D: 320 sacos en un contenedor</summary><ContainerScene sacos={320} kgSaco={60} /></details>}
     <Runner runId={'case-' + c.id} steps={c.steps} showPhases />
   </>
 }

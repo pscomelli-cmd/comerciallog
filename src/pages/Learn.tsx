@@ -43,7 +43,8 @@ export function Home() {
         <li><b>Diagnóstico del error.</b> Si fallás, la plataforma intenta decirte si fue cálculo, unidades, interpretación o un supuesto equivocado.</li>
         <li><b>Calculadora siempre a mano</b> (botón arriba a la derecha), con la operación exacta para teclear al final de cada ejercicio.</li>
         <li><b>Datos simulados.</b> Todos los precios, costes y tipos de cambio de los ejercicios son inventados con fines didácticos; no son cotizaciones actuales ni históricas.</li>
-        <li><b>Tu progreso se guarda en este navegador</b>, no en un servidor. Detalles y copia de seguridad en <a href="#/progreso">Mi progreso</a>.</li>
+        <li><b>Tu progreso se guarda en este navegador</b> y, si abrís la plataforma desde su enlace de claude.ai con tu cuenta, se sincroniza con tu teléfono. Detalles y copia de seguridad en <a href="#/progreso">Mi progreso</a>.</li>
+        <li><b>Cargas en 3D:</b> palés, camiones y un contenedor de café a escala real, para ver lo que dicen los números.</li>
       </ul>
     </div>
   </>

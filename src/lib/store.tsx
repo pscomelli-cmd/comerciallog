@@ -19,6 +19,8 @@ export interface State {
   myCases: MyCase[]
   drafts: Record<string, string>
   days: Record<string, number>
+  /** Momento de la última modificación (ms), para sincronizar entre dispositivos. */
+  ts?: number
 }
 
 const KEY = 'comerciallog.v1'
@@ -43,17 +45,61 @@ function load(): { state: State; storageOk: boolean } {
   } catch { return { state: empty(), storageOk: false } }
 }
 
-interface Ctx { s: State; set: (fn: (s: State) => State) => void; storageOk: boolean }
+export type Sync = 'local' | 'conectando' | 'activa' | 'error'
+interface Ctx { s: State; set: (fn: (s: State) => State) => void; storageOk: boolean; sync: Sync }
 const C = createContext<Ctx>(null as unknown as Ctx)
+
+/* ---------- Sincronización opcional (solo cuando la página se abre dentro de claude.ai) ---------- */
+interface DocRef { get(): Promise<{ exists: boolean; data(): Record<string, unknown> | undefined }>; set(d: Record<string, unknown>): Promise<void> }
+async function cloudDoc(): Promise<DocRef | null> {
+  const c = (window as unknown as { claude?: { use(n: string): Promise<unknown> } }).claude
+  if (!c?.use) return null
+  const [db, user] = await Promise.all([c.use('db'), c.use('user')]) as [{ collection(p: string): { doc(k: string): DocRef } } | null, { id(): Promise<string | null> } | null]
+  const id = await user?.id()
+  return db && id ? db.collection('data/users/' + id).doc('progreso') : null
+}
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const init = useRef(load())
   const [s, setS] = useState(init.current.state)
   const [storageOk, setOk] = useState(init.current.storageOk)
+  const [sync, setSync] = useState<Sync>('local')
+  const doc = useRef<DocRef | null>(null)
+  const latest = useRef(s); latest.current = s
+  const pushed = useRef(0)
   useEffect(() => {
     try { localStorage.setItem(KEY, JSON.stringify(s)); setOk(true) } catch { setOk(false) }
   }, [s])
-  return <C.Provider value={{ s, set: (fn) => setS((p) => fn(p)), storageOk }}>{children}</C.Provider>
+  // Al abrir y al volver a la pestaña: quedarse con la versión más reciente (la última modificación gana).
+  useEffect(() => {
+    let alive = true
+    const pull = async () => {
+      try {
+        if (!doc.current) { setSync('conectando'); doc.current = await cloudDoc(); if (!doc.current) { if (alive) setSync('local'); return } }
+        const snap = await doc.current.get(), d = snap.exists ? snap.data() : undefined
+        const remoteTs = Number(d?.ts ?? 0), localTs = latest.current.ts ?? 0
+        if (!alive) return
+        if (d && typeof d.json === 'string' && remoteTs > localTs) { pushed.current = remoteTs; setS({ ...empty(), ...JSON.parse(d.json) }) }
+        setSync('activa')
+      } catch { if (alive) setSync(doc.current ? 'error' : 'local') }
+    }
+    void pull()
+    const vis = () => { if (document.visibilityState === 'visible') void pull() }
+    document.addEventListener('visibilitychange', vis)
+    return () => { alive = false; document.removeEventListener('visibilitychange', vis) }
+  }, [])
+  // Subir los cambios con una pausa, de a una escritura por vez.
+  useEffect(() => {
+    if (sync !== 'activa' || !s.ts || s.ts <= pushed.current) return
+    const t = setTimeout(() => {
+      const cur = latest.current, json = JSON.stringify(cur)
+      if (!doc.current || !cur.ts || json.length > 200_000) return
+      const ts = cur.ts
+      doc.current.set({ ts, json }).then(() => { pushed.current = Math.max(pushed.current, ts) }).catch(() => setSync('error'))
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [s, sync])
+  return <C.Provider value={{ s, set: (fn) => setS((p) => ({ ...fn(p), ts: Date.now() })), storageOk, sync }}>{children}</C.Provider>
 }
 export const useStore = () => useContext(C)
 

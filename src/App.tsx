@@ -8,12 +8,13 @@ import { Tools } from './pages/Tools.tsx'
 import { ExcelPage, Comms, Glossary } from './pages/Reference.tsx'
 import { MyCases } from './pages/MyCases.tsx'
 import { Progress } from './pages/Progress.tsx'
+import { View3D } from './pages/View3D.tsx'
 
 const NAV: [string, [string, string][]][] = [
   ['Empezar', [['', 'Inicio'], ['diagnostico', 'Diagnóstico inicial'], ['repaso', 'Repaso de hoy']]],
   ['Aprender', [['ruta/bases', 'Bases matemáticas'], ['ruta/cafe', 'Recorrido de café'], ['ruta/sectores', 'Arroz, pasta, atún, salmón'], ['ruta/logistica', 'Logística e Incoterms'], ['ruta/comercial', 'Gestión comercial']]],
   ['Practicar', [['casos', 'Casos y simulaciones'], ['mis-casos', 'Mis casos'], ['correos', 'Correos en 4 idiomas']]],
-  ['Consultar', [['herramientas', 'Calculadoras'], ['excel', 'Excel en italiano'], ['glosario', 'Glosario'], ['progreso', 'Mi progreso']]],
+  ['Consultar', [['herramientas', 'Calculadoras'], ['3d', 'Cargas en 3D'], ['excel', 'Excel en italiano'], ['glosario', 'Glosario'], ['progreso', 'Mi progreso']]],
 ]
 
 export const go = (path: string) => { window.location.hash = '#/' + path }
@@ -30,7 +31,7 @@ export function App() {
   const active = a === 'caso' ? 'casos' : a === 'leccion' ? 'ruta/' + (lessonById(b)?.track ?? '') : a === 'practica' ? 'repaso' : path
   const page = a === '' ? <Home /> : a === 'diagnostico' ? <Diagnostico /> : a === 'ruta' ? <Track id={b} /> : a === 'leccion' ? <LessonPage id={b} />
     : a === 'practica' ? <Practice id={b} /> : a === 'repaso' ? <Review /> : a === 'casos' ? <CasesList /> : a === 'caso' ? <CasePage id={b} />
-    : a === 'herramientas' ? <Tools /> : a === 'excel' ? <ExcelPage /> : a === 'correos' ? <Comms /> : a === 'glosario' ? <Glossary />
+    : a === '3d' ? <View3D /> : a === 'herramientas' ? <Tools /> : a === 'excel' ? <ExcelPage /> : a === 'correos' ? <Comms /> : a === 'glosario' ? <Glossary />
     : a === 'mis-casos' ? <MyCases /> : a === 'progreso' ? <Progress /> : <Home />
   return <div className="shell">
     <header className="top">

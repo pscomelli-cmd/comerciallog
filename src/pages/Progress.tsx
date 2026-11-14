@@ -6,7 +6,7 @@ import { empty, today, useStore, type State } from '../lib/store.tsx'
 import { DIM_LABEL, ERR_LABEL, type Dim, type ErrKind } from '../lib/types.ts'
 
 export function Progress() {
-  const { s, set, storageOk } = useStore()
+  const { s, set, storageOk, sync } = useStore()
   const file = useRef<HTMLInputElement>(null)
   const [txt, setTxt] = useState<string | null>(null)
   const [msg, setMsg] = useState('')
@@ -15,7 +15,11 @@ export function Progress() {
   const totalEx = Object.values(s.days).reduce((a, b) => a + b, 0)
   const errTotal = Object.values(s.errs).reduce((a, b) => a + b, 0)
   const practised = SKILLS.filter((k) => s.skills[k.id])
-  const exportJson = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(s, null, 1)], { type: 'application/json' })); a.download = `comerciallog-progreso-${today()}.json`; a.click(); URL.revokeObjectURL(a.href) }
+  const exportJson = async () => {
+    const dl = await (window as unknown as { claude?: { use(n: string): Promise<{ save(o: { filename: string; data: string }): Promise<unknown> } | null> } }).claude?.use('downloads').catch(() => null)
+    if (dl) { try { await dl.save({ filename: `comerciallog-progreso-${today()}.json`, data: JSON.stringify(s, null, 1) }); setMsg('Copia guardada.') } catch { setMsg('No se guardó la copia. Podés usar «Copiar o pegar como texto».') } return }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(s, null, 1)], { type: 'application/json' })); a.download = `comerciallog-progreso-${today()}.json`; a.click(); URL.revokeObjectURL(a.href)
+  }
   const restore = (raw: string) => { try { const p = JSON.parse(raw) as State; if (p.v !== 1 || !p.skills || !p.runs) throw new Error(); set(() => ({ ...empty(), ...p })); setMsg('Copia restaurada.'); setTxt(null) } catch { setMsg('Ese contenido no es una copia de progreso válida de ComercialLog.') } }
   return <>
     <h1>Mi progreso</h1>
@@ -37,15 +41,18 @@ export function Progress() {
     <h2>Dónde se guarda tu progreso</h2>
     <div className="card rich">
       <p>Estado del guardado: <b>{storageOk ? 'activo en este navegador' : 'no disponible (el navegador lo bloquea)'}</b>.</p>
+      <p>Sincronización entre dispositivos: <b>{sync === 'activa' ? 'activa' : sync === 'conectando' ? 'conectando…' : sync === 'error' ? 'con errores (se reintenta al volver a la página)' : 'no disponible en esta dirección'}</b>.</p>
+      {sync !== 'local' ? <p className="small">Abriendo este mismo enlace con tu cuenta de Claude en la computadora y en el teléfono, el progreso se copia a un espacio privado tuyo y se recupera en el otro dispositivo al abrir la página o volver a ella. Si usás dos dispositivos a la vez, gana la última modificación: conviene terminar en uno antes de seguir en el otro.</p>
+        : <p className="small">Aquí el progreso vive solo en este navegador. La sincronización funciona cuando abrís la plataforma desde su enlace de claude.ai con tu cuenta.</p>}
       <ul>
         <li>Todo (respuestas, repaso, «Mis casos», borradores de correos) se guarda en el <b>almacenamiento local de este navegador</b>, en este dispositivo. No hay cuenta ni servidor: nada sale de tu equipo.</li>
-        <li><b>No se sincroniza.</b> En otro navegador, otro ordenador o el móvil, empezás de cero, salvo que importes una copia.</li>
+        <li><b>Sin sincronización activa</b>, en otro navegador, otro ordenador o el móvil empezás de cero, salvo que importes una copia.</li>
         <li><b>Se pierde</b> si borrás los datos de navegación o del sitio, si usás una ventana privada, o si el navegador limpia el almacenamiento por falta de uso o de espacio (algunos navegadores móviles lo hacen tras varias semanas sin visitar la página).</li>
         <li>Está ligado a la <b>dirección web</b> exacta: si la plataforma se publica en otra dirección, el progreso no la sigue.</li>
         <li>No está cifrado: quien use este navegador puede verlo.</li>
       </ul>
       <p>Para no depender de eso, descargá una copia de vez en cuando:</p>
-      <div className="row"><button className="btn primary" onClick={exportJson}>Descargar copia de seguridad</button>
+      <div className="row"><button className="btn primary" onClick={() => void exportJson()}>Descargar copia de seguridad</button>
         <button className="btn" onClick={() => file.current?.click()}>Restaurar desde una copia</button>
         <input ref={file} type="file" accept="application/json" hidden onChange={(e) => { const fl = e.target.files?.[0]; if (fl) void fl.text().then(restore); e.target.value = '' }} />
         <button className="btn" onClick={() => setTxt(txt === null ? JSON.stringify(s) : null)}>{txt === null ? 'Copiar o pegar como texto' : 'Ocultar texto'}</button>
