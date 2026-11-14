@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { N } from '../content/h.ts'
 import { Runner } from '../components/Runner.tsx'
+import { ConfirmButton } from '../components/Confirm.tsx'
 import { f, parseNum } from '../lib/num.ts'
 import { today, useStore, type FieldStatus, type MyCase, type MyField } from '../lib/store.tsx'
 import type { Step } from '../lib/types.ts'
@@ -64,7 +65,7 @@ export function MyCases() {
     <div className="chips">{s.myCases.map((c) => <button key={c.id} className={'chip' + (c.id === sel ? ' on' : '')} onClick={() => { setSel(c.id); setPractice(0) }}>{c.title}</button>)}</div>
     <div className="row"><span className="muted small">Nuevo caso a partir de:</span>{Object.entries(TPL).map(([k, t]) => <button key={k} className="btn small" title={t.desc} onClick={() => add(k)}>+ {t.title}</button>)}</div>
     {cur && <Editor key={cur.id} c={cur} save={save} practice={practice} setPractice={setPractice}
-      del={() => { if (confirm('¿Eliminar este caso? No se puede deshacer.')) { set((st) => ({ ...st, myCases: st.myCases.filter((x) => x.id !== cur.id) })); setSel(null) } }} />}
+      del={() => { set((st) => ({ ...st, myCases: st.myCases.filter((x) => x.id !== cur.id) })); setSel(null) }} />}
   </>
 }
 
@@ -93,7 +94,7 @@ function Editor({ c, save, del, practice, setPractice }: { c: MyCase; save: (c: 
           {(sup > 0 || pen > 0) && <p className="small"><b>Atención:</b> estos resultados dependen de {sup > 0 && <span className="k supuesto">{sup} supuesto(s) simulado(s)</span>} {pen > 0 && <span className="k pendiente">{pen} dato(s) pendiente(s) de verificar</span>}. No los presentes como definitivos.</p>}</>}
     </div>
     <div className="row"><button className="btn primary" disabled={missing.length > 0} onClick={() => { set((st) => { const runs = { ...st.runs }; delete runs[runId]; return { ...st, runs } }); setPractice(practice + 1) }}>Practicar con este caso</button>
-      <button className="btn ghost" onClick={del}>Eliminar caso</button></div>
+      <ConfirmButton label="Eliminar caso" onConfirm={del} /></div>
     {practice > 0 && !missing.length && <Runner key={practice} runId={runId} steps={t.steps(vals, runId + '-' + practice)} />}
   </div>
 }

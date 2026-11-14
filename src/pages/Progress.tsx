@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
+import { ConfirmButton } from '../components/Confirm.tsx'
 import { CASES, LESSONS } from '../content/index.ts'
 import { SKILLS } from '../content/skills.ts'
 import { empty, today, useStore, type State } from '../lib/store.tsx'
@@ -7,13 +8,15 @@ import { DIM_LABEL, ERR_LABEL, type Dim, type ErrKind } from '../lib/types.ts'
 export function Progress() {
   const { s, set, storageOk } = useStore()
   const file = useRef<HTMLInputElement>(null)
+  const [txt, setTxt] = useState<string | null>(null)
+  const [msg, setMsg] = useState('')
   const casesDone = CASES.filter((c) => s.runs['case-' + c.id]?.done).length
   const read = LESSONS.filter((l) => s.read[l.id]).length
   const totalEx = Object.values(s.days).reduce((a, b) => a + b, 0)
   const errTotal = Object.values(s.errs).reduce((a, b) => a + b, 0)
   const practised = SKILLS.filter((k) => s.skills[k.id])
   const exportJson = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(s, null, 1)], { type: 'application/json' })); a.download = `comerciallog-progreso-${today()}.json`; a.click(); URL.revokeObjectURL(a.href) }
-  const importJson = async (f?: File) => { if (!f) return; try { const p = JSON.parse(await f.text()) as State; if (p.v !== 1 || !p.skills || !p.runs) throw new Error(); if (confirm('Esto reemplaza el progreso guardado en este navegador por el del archivo. ¿Continuar?')) set(() => ({ ...empty(), ...p })) } catch { alert('El archivo no es una copia de progreso válida de ComercialLog.') } }
+  const restore = (raw: string) => { try { const p = JSON.parse(raw) as State; if (p.v !== 1 || !p.skills || !p.runs) throw new Error(); set(() => ({ ...empty(), ...p })); setMsg('Copia restaurada.'); setTxt(null) } catch { setMsg('Ese contenido no es una copia de progreso válida de ComercialLog.') } }
   return <>
     <h1>Mi progreso</h1>
     <div className="stats"><div><b>{read}</b><span>de {LESSONS.length} lecciones leídas</span></div><div><b>{casesDone}</b><span>de {CASES.length} casos completados</span></div><div><b>{totalEx}</b><span>preguntas respondidas</span></div><div><b>{Object.keys(s.days).length}</b><span>días de práctica</span></div></div>
@@ -44,8 +47,13 @@ export function Progress() {
       <p>Para no depender de eso, descargá una copia de vez en cuando:</p>
       <div className="row"><button className="btn primary" onClick={exportJson}>Descargar copia de seguridad</button>
         <button className="btn" onClick={() => file.current?.click()}>Restaurar desde una copia</button>
-        <input ref={file} type="file" accept="application/json" hidden onChange={(e) => { void importJson(e.target.files?.[0]); e.target.value = '' }} />
-        <button className="btn ghost" onClick={() => { if (confirm('¿Borrar TODO el progreso y tus casos de este navegador? No se puede deshacer.')) set(() => empty()) }}>Borrar todo</button></div>
+        <input ref={file} type="file" accept="application/json" hidden onChange={(e) => { const fl = e.target.files?.[0]; if (fl) void fl.text().then(restore); e.target.value = '' }} />
+        <button className="btn" onClick={() => setTxt(txt === null ? JSON.stringify(s) : null)}>{txt === null ? 'Copiar o pegar como texto' : 'Ocultar texto'}</button>
+        <ConfirmButton label="Borrar todo" onConfirm={() => { set(() => empty()); setMsg('Progreso borrado.') }} /></div>
+      {txt !== null && <><p className="small muted">Si la descarga no funciona en tu navegador: copiá este texto y guardalo en una nota. Para restaurar, pegá aquí una copia anterior y pulsá el botón. Restaurar reemplaza el progreso actual.</p>
+        <textarea className="backup" rows={5} value={txt} onChange={(e) => setTxt(e.target.value)} onFocus={(e) => e.target.select()} />
+        <button className="btn small" onClick={() => restore(txt)}>Restaurar desde este texto</button></>}
+      {msg && <p><b>{msg}</b></p>}
     </div>
   </>
 }
