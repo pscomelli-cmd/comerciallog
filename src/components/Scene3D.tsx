@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { f, g } from '../lib/num.ts'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 export type Build = (scene: THREE.Group) => { center: [number, number, number]; radius: number }
@@ -10,10 +11,11 @@ const CARTON = 0xc9a26b, WOOD = 0x9a6b3f, JUTE = 0xb8935a, STEEL = 0x7d8791, FIL
 /** Lienzo 3D: girar arrastrando, acercar con rueda o pellizco. Unidades en metros. */
 export function Scene3D({ build, deps, height = 320 }: { build: Build; deps: unknown[]; height?: number }) {
   const box = useRef<HTMLDivElement>(null)
-  const api = useRef<{ renderer: THREE.WebGLRenderer; rig: THREE.Group; view: { center: [number, number, number]; radius: number } } | null>(null)
+  const api = useRef<{ renderer: THREE.WebGLRenderer; rig: THREE.Group; content: THREE.Group; camera: THREE.PerspectiveCamera; controls: OrbitControls; grid?: THREE.GridHelper; scene: THREE.Scene; radius: number; view: { center: [number, number, number]; radius: number } } | null>(null)
   const [fail, setFail] = useState(false)
   const [vr, setVr] = useState(false)
 
+  // Se crea una sola vez; el contenido se redibuja aparte para no perder el punto de vista.
   useEffect(() => {
     const el = box.current!
     let renderer: THREE.WebGLRenderer
@@ -24,27 +26,36 @@ export function Scene3D({ build, deps, height = 320 }: { build: Build; deps: unk
     const scene = new THREE.Scene()
     scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.5))
     const sun = new THREE.DirectionalLight(0xffffff, 1.6); sun.position.set(4, 9, 6); scene.add(sun)
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 400)
+    const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 600)
     const rig = new THREE.Group(); rig.add(camera); scene.add(rig)
     const content = new THREE.Group(); scene.add(content)
-    const view = build(content)
-    const grid = new THREE.GridHelper(Math.ceil(view.radius * 4), Math.ceil(view.radius * 4), 0x9a8f83, 0xb9afa3)
-    ;(grid.material as THREE.Material).transparent = true; (grid.material as THREE.Material).opacity = 0.45; scene.add(grid)
     const controls = new OrbitControls(camera, renderer.domElement)
-    controls.target.set(...view.center)
-    camera.position.set(view.center[0] + view.radius * 1.25, view.center[1] + view.radius * 0.95, view.center[2] + view.radius * 1.7)
     controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 - 0.02
-    controls.minDistance = view.radius * 0.35; controls.maxDistance = view.radius * 6
     const resize = () => { const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix() }
     resize(); const ro = new ResizeObserver(resize); ro.observe(el)
     renderer.setAnimationLoop(() => { if (!renderer.xr.isPresenting) controls.update(); renderer.render(scene, camera) })
-    api.current = { renderer, rig, view }
+    api.current = { renderer, rig, content, camera, controls, scene, radius: 0, view: { center: [0, 0, 0], radius: 1 } }
     const xr = (navigator as Navigator & { xr?: { isSessionSupported(m: string): Promise<boolean> } }).xr
     xr?.isSessionSupported('immersive-vr').then(setVr).catch(() => setVr(false))
     return () => {
-      renderer.setAnimationLoop(null); ro.disconnect(); controls.dispose()
-      scene.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); const mm = m.material as THREE.Material | THREE.Material[] | undefined; if (Array.isArray(mm)) mm.forEach((x) => x.dispose()); else mm?.dispose() })
+      renderer.setAnimationLoop(null); ro.disconnect(); controls.dispose(); clear(scene)
       renderer.dispose(); renderer.domElement.remove(); api.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const a = api.current; if (!a) return
+    clear(a.content); a.content.clear()
+    const view = build(a.content); a.view = view
+    // Solo se recoloca la cámara cuando cambia el tamaño de la escena, no en cada ajuste.
+    if (Math.abs(view.radius - a.radius) > 0.01) {
+      a.radius = view.radius
+      if (a.grid) { a.scene.remove(a.grid); a.grid.geometry.dispose(); (a.grid.material as THREE.Material).dispose() }
+      const n = Math.ceil(view.radius * 4)
+      a.grid = new THREE.GridHelper(n, n, 0x9a8f83, 0xb9afa3); const gm = a.grid.material as THREE.Material; gm.transparent = true; gm.opacity = 0.45; a.scene.add(a.grid)
+      a.controls.target.set(...view.center)
+      a.camera.position.set(view.center[0] + view.radius * 1.25, view.center[1] + view.radius * 0.95, view.center[2] + view.radius * 1.7)
+      a.controls.minDistance = view.radius * 0.35; a.controls.maxDistance = view.radius * 6
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
@@ -69,6 +80,10 @@ export function Scene3D({ build, deps, height = 320 }: { build: Build; deps: unk
       <button className="btn small" onClick={full}>Pantalla completa</button>
       {vr && <button className="btn small primary" onClick={() => void enterVr()}>Entrar en realidad virtual</button>}</div>
   </div>
+}
+
+function clear(root: THREE.Object3D) {
+  root.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose(); const mm = m.material as THREE.Material | THREE.Material[] | undefined; if (Array.isArray(mm)) mm.forEach((x) => x.dispose()); else mm?.dispose() })
 }
 
 function instanced(geo: THREE.BufferGeometry, material: THREE.Material, pos: [number, number, number][], parent: THREE.Group) {
@@ -133,7 +148,7 @@ export function TruckScene({ kgPale, huecos = 33, max = 24000, alto = 1.4 }: { k
   }
   if (!ok) return <p className="muted small">Introducí el peso por palé para ver la escena.</p>
   return <><Scene3D build={build} deps={[kgPale, huecos, max, alto]} />
-    <p className="small"><b>{n} de {huecos} huecos ocupados</b>. {porPeso < huecos ? `Limita el peso: con ${n} palés ya van ${(n * kgPale).toLocaleString('es-ES')} kg de ${max.toLocaleString('es-ES')}. Los huecos en rojo viajan vacíos.` : `Limita el espacio: el camión va lleno con ${(n * kgPale).toLocaleString('es-ES')} kg, y sobran ${(max - n * kgPale).toLocaleString('es-ES')} kg de capacidad.`}</p></>
+    <p className="small"><b>{n} de {huecos} huecos ocupados</b>. {porPeso < huecos ? `Limita el peso: con ${n} palés ya van ${f(n * kgPale, 0)} kg de ${f(max, 0)}. Los huecos en rojo viajan vacíos.` : `Limita el espacio: el camión va lleno con ${f(n * kgPale, 0)} kg, y sobran ${f(max - n * kgPale, 0)} kg de capacidad.`}</p></>
 }
 
 /** Contenedor de 20 pies con sacos de café verde. Medidas interiores y del saco orientativas. */
@@ -152,5 +167,80 @@ export function ContainerScene({ sacos, kgSaco }: { sacos: number; kgSaco: numbe
   }
   if (!ok) return <p className="muted small">Introducí el número de sacos (hasta 600) y su peso.</p>
   return <><Scene3D build={build} deps={[sacos, kgSaco]} />
-    <p className="small"><b>{n} sacos · {(n * kgSaco).toLocaleString('es-ES')} kg</b> en {Math.ceil(n / perLayer)} capas ({Math.round((Math.ceil(n / perLayer) * sy / H) * 100)} % de la altura).{sacos > cap ? ` En este esquema no caben más de ${cap} sacos.` : ''} <span className="muted">Medidas orientativas: la estiba y la carga reales dependen del origen, del saco y de la naviera.</span></p></>
+    <p className="small"><b>{n} sacos · {f(n * kgSaco, 0)} kg</b> en {Math.ceil(n / perLayer)} capas ({Math.round((Math.ceil(n / perLayer) * sy / H) * 100)} % de la altura).{sacos > cap ? ` En este esquema no caben más de ${cap} sacos.` : ''} <span className="muted">Medidas orientativas: la estiba y la carga reales dependen del origen, del saco y de la naviera.</span></p></>
+}
+
+const GOOD = 0x3f7f5f, AMBER = 0xd39a2c, RED = 0xa3322a
+const fmt = (n: number) => f(n, 0)
+
+/** Almacén con estanterías: cada palé se colorea según sea stock normal, zona de punto de pedido o stock de seguridad. */
+export function WarehouseScene({ stock, cons, plazo, ss, kgPale, dia }: { stock: number; cons: number; plazo: number; ss: number; kgPale: number; dia: number }) {
+  const ok = stock > 0 && cons > 0 && kgPale > 0 && plazo >= 0 && ss >= 0
+  const CAP = 120, rop = cons * plazo + ss, queda = Math.max(0, stock - cons * dia)
+  const total = Math.min(CAP, Math.ceil(stock / kgPale)), hay = Math.min(CAP, Math.ceil(queda / kgPale))
+  const build: Build = (g) => {
+    const NX = 10, NZ = 4, by: Record<number, [number, number, number][]> = { [GOOD]: [], [AMBER]: [], [RED]: [] }, gone: [number, number, number][] = [], shelves: [number, number, number][] = []
+    for (let z = 0; z < NZ; z++) for (let l = 0; l < 3; l++) shelves.push([(NX - 1) * 0.7, l * 1.7 - 0.03, z * 2.6])
+    for (let i = 0; i < total; i++) {
+      const z = i % NZ, r = Math.floor(i / NZ), x = r % NX, l = Math.floor(r / NX)
+      const at: [number, number, number] = [x * 1.4, l * 1.7, z * 2.6]
+      if (i >= hay) gone.push(at); else by[i * kgPale < ss ? RED : i * kgPale < rop ? AMBER : GOOD].push(at)
+    }
+    instanced(new THREE.BoxGeometry(NX * 1.4, 0.06, 1.0), mat(STEEL), shelves, g)
+    const pg = new THREE.BoxGeometry(1.15, 1.25, 0.8).translate(0, 0.625, 0)
+    for (const c of [GOOD, AMBER, RED]) instanced(pg, mat(c), by[c], g)
+    instanced(new THREE.BoxGeometry(1.15, 0.04, 0.8).translate(0, 0.02, 0), mat(0x6f655d, { transparent: true, opacity: 0.35 }), gone, g)
+    return { center: [(NX - 1) * 0.7, 2, (NZ - 1) * 1.3], radius: 9 }
+  }
+  if (!ok) return <p className="muted small">Completá stock, consumo, plazo y peso por palé para ver el almacén.</p>
+  const estado = queda <= 0 ? ['Rotura de stock: no queda producto.', 'bad'] : queda <= ss ? ['Estás consumiendo el stock de seguridad.', 'bad'] : queda <= rop ? ['Por debajo del punto de pedido: el pedido ya tendría que estar lanzado.', 'mid'] : ['Por encima del punto de pedido.', 'ok']
+  return <><Scene3D build={build} deps={[stock, cons, plazo, ss, kgPale, dia]} height={340} />
+    <p className="small"><span className={'dot ' + estado[1]} /> <b>Día {dia}:</b> quedan {fmt(queda)} kg ({hay} palés). {estado[0]} Punto de pedido: {fmt(rop)} kg. Si pedís hoy, la mercancía llega el día {dia + plazo}; el stock se agota el día {Math.floor(stock / cons)}.
+      {Math.ceil(stock / kgPale) > CAP && <span className="muted"> Se dibujan como máximo {CAP} palés.</span>}</p>
+    <p className="small muted"><span className="k calc">Verde</span> stock normal · <span className="k supuesto">Ámbar</span> hay que haber pedido · <span className="k pendiente">Rojo</span> stock de seguridad · en gris, huecos ya consumidos.</p></>
+}
+
+/** Cámara de fresco: las cajas cambian de color a medida que se agota la vida útil. */
+export function ColdRoomScene({ kg, venta, vida, coste, liq, dia }: { kg: number; venta: number; vida: number; coste: number; liq: number; dia: number }) {
+  const ok = kg > 0 && venta >= 0 && vida > 0
+  const KGC = 20, CAP = 200, total = Math.min(CAP, Math.ceil(kg / KGC)), queda = Math.max(0, kg - venta * Math.min(dia, vida)), hay = Math.min(CAP, Math.ceil(queda / KGC))
+  const f = Math.min(1, dia / vida), caducado = dia > vida
+  const color = caducado ? 0x5a5a5a : new THREE.Color(GOOD).lerp(new THREE.Color(f < 0.5 ? AMBER : RED), f < 0.5 ? f * 2 : (f - 0.5) * 2).getHex()
+  const build: Build = (g) => {
+    const NX = 8, NZ = 5, on: [number, number, number][] = [], off: [number, number, number][] = []
+    for (let i = 0; i < total; i++) { const x = i % NX, z = Math.floor(i / NX) % NZ, l = Math.floor(i / (NX * NZ)); (i < hay ? on : off).push([x * 0.85, l * 0.27, z * 0.65]) }
+    const bg = new THREE.BoxGeometry(0.8, 0.25, 0.6).translate(0, 0.125, 0)
+    instanced(bg, mat(color), on, g)
+    instanced(new THREE.BoxGeometry(0.8, 0.02, 0.6).translate(0, 0.01, 0), mat(0x6f655d, { transparent: true, opacity: 0.3 }), off.filter((p) => p[1] === 0), g)
+    outline(NX * 0.85 + 0.6, 2.6, NZ * 0.65 + 0.6, [(NX - 1) * 0.425, 1.3, (NZ - 1) * 0.325], g, 0x1f5f99)
+    return { center: [(NX - 1) * 0.425, 0.8, (NZ - 1) * 0.325], radius: 4.6 }
+  }
+  if (!ok) return <p className="muted small">Completá los kilos comprados, la venta diaria y la vida útil.</p>
+  const sobrante = Math.max(0, kg - venta * vida)
+  return <><Scene3D build={build} deps={[kg, venta, vida, dia]} />
+    <p className="small"><b>Día {dia} de {vida}:</b> quedan {fmt(queda)} kg sin vender ({hay} cajas de {KGC} kg). {caducado ? `Vida útil agotada: esos ${fmt(queda)} kg ya no se pueden vender como frescos.` : `Vida útil consumida: ${Math.round(f * 100)} %.`}</p>
+    <p className="small">{sobrante > 0 ? <>A este ritmo sobrarán <b>{fmt(sobrante)} kg</b>. Si se liquidan a {g(liq)} €/kg, la pérdida es de <b>{fmt(sobrante * (coste - liq))} €</b>.</> : <>A este ritmo se vende todo el día {Math.ceil(kg / venta)}, antes de que caduque.</>} <span className="muted">Cada caja representa {KGC} kg; el color pasa de verde a rojo según se acerca la caducidad.</span></p></>
+}
+
+/** La merma de tueste a la vista: cada bloque son 60 kg. Los huecos son el peso que se evapora. */
+export function RoastScene({ sacos, merma, gramos }: { sacos: number; merma: number; gramos: number }) {
+  const ok = sacos > 0 && sacos <= 400 && merma >= 0 && merma < 100 && gramos > 0
+  const verde = sacos * 60, tost = verde * (1 - merma / 100), bloques = Math.round(tost / 60), paquetes = Math.floor(tost / (gramos / 1000)), PP = 960
+  const pales = Math.ceil(paquetes / PP)
+  const build: Build = (g) => {
+    const NX = 20, pos = (i: number, z: number, sx = 0.62, sy = 0.42): [number, number, number] => [(i % NX) * sx, Math.floor(i / NX) % 5 * sy, z + Math.floor(i / (NX * 5)) * 0.62]
+    const a: [number, number, number][] = [], b: [number, number, number][] = [], gh: [number, number, number][] = [], c: [number, number, number][] = []
+    for (let i = 0; i < sacos; i++) { a.push(pos(i, 0)); (i < bloques ? b : gh).push(pos(i, 4)) }
+    for (let i = 0; i < Math.min(pales, 40); i++) c.push([(i % 10) * 1.35, 0, 8 + Math.floor(i / 10) * 1])
+    const bg = new THREE.BoxGeometry(0.58, 0.38, 0.56).translate(0, 0.19, 0)
+    instanced(new THREE.SphereGeometry(0.5, 10, 8).scale(0.6, 0.4, 0.58).translate(0, 0.2, 0), mat(0x7a8f5a), a, g)
+    instanced(bg, mat(0x5b3a29), b, g)
+    instanced(bg, mat(RED, { transparent: true, opacity: 0.18, depthWrite: false }), gh, g)
+    instanced(new THREE.BoxGeometry(1.2, 1.3, 0.8).translate(0, 0.65, 0), mat(CARTON), c, g)
+    return { center: [6, 0.8, 4.5], radius: 9.5 }
+  }
+  if (!ok) return <p className="muted small">Introducí los sacos (hasta 400), la merma y el formato del paquete.</p>
+  return <><Scene3D build={build} deps={[sacos, merma, gramos]} height={340} />
+    <p className="small"><b>Fila 1, café verde:</b> {sacos} sacos = {fmt(verde)} kg. <b>Fila 2, café tostado:</b> {fmt(tost)} kg; los {sacos - bloques} bloques en rojo translúcido son los {fmt(verde - tost)} kg que se evaporan. <b>Fila 3, envasado:</b> {fmt(paquetes)} paquetes de {gramos} g en {pales} palé{pales === 1 ? '' : 's'} (a {PP} paquetes por palé, simulado).</p>
+    <p className="small muted">Pagaste y transportaste toda la fila 1; solo vendés la fila 2. Por eso el coste por kilo tostado se obtiene dividiendo entre {g(1 - merma / 100)}, no sumando un {merma} %.</p></>
 }

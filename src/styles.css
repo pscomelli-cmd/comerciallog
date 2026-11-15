@@ -183,3 +183,4 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .canvas3d { width: 100%; border-radius: 8px; overflow: hidden; background: var(--surface2); touch-action: none; }
 .canvas3d canvas { display: block; }
 .canvas3d:fullscreen { height: 100% !important; border-radius: 0; background: var(--bg); }
+.field input[type="range"] { padding: 0; accent-color: var(--accent); }
