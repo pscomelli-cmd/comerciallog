@@ -12,6 +12,7 @@ Plataforma interactiva en español para entrenar gestión comercial, compras, lo
 - **10 casos** en siete fases (comprender, qué falta, a quién consultar, calcular, comparar, decidir, comunicar), con datos progresivos y evaluación por dimensión.
 - **25 ejercicios generativos** con dificultad adaptativa y repetición espaciada.
 - **Calculadoras**, fórmulas de **Excel en italiano**, **correos modelo** en español, italiano, inglés y portugués, **glosario**.
+- **Cargas en 3D** (three.js): palés, camión, contenedor de café, merma de tueste, almacén con punto de pedido, cámara de salmón, ruta de Incoterms y latas de atún en corte; integradas en lecciones y casos. Incluye un botón de realidad virtual (WebXR) que solo aparece en dispositivos compatibles y no se ha probado con un visor.
 - **Mis casos**: casos propios anonimizados, separando datos aportados, resultados calculados, supuestos y pendientes.
 
 Cada ejercicio: una pregunta por vez, pistas graduales, solución solo tras un intento, diagnóstico del tipo de error (cálculo, unidades, interpretación, supuesto), resolución escrita, teclas de calculadora, cálculo mental y significado comercial del resultado.
@@ -25,11 +26,11 @@ npm run check    # comprueba la coherencia del contenido (respuestas, ids, tramp
 npm run build    # genera dist/ (sitio estático)
 ```
 
-`dist/` es estático y usa rutas con `#`: funciona en GitHub Pages (workflow incluido, se ejecuta al llegar a `main`), Vercel o cualquier servidor de archivos.
+Incluye `manifest.webmanifest` e iconos, de modo que en el teléfono se puede añadir a la pantalla de inicio. `dist/` es estático y usa rutas con `#`: funciona en GitHub Pages (workflow incluido, se ejecuta al llegar a `main`), Vercel o cualquier servidor de archivos.
 
 ## Dónde se guarda el progreso
 
-En el `localStorage` del navegador (clave `comerciallog.v1`). No hay servidor ni cuentas. No se sincroniza entre dispositivos y se pierde si se borran los datos del sitio. La pantalla «Mi progreso» permite descargar y restaurar una copia en JSON.
+En el `localStorage` del navegador (clave `comerciallog.v1`). En el sitio estático no hay servidor ni cuentas: no se sincroniza entre dispositivos y se pierde si se borran los datos del sitio. Cuando la página se publica dentro de claude.ai (`scripts/single-file.py` genera el HTML único), el progreso se sincroniza además en un espacio privado del usuario. La pantalla «Mi progreso» permite descargar y restaurar una copia en JSON.
 
 ## Sobre los datos
 

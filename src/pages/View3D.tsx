@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ColdRoomScene, ContainerScene, PalletScene, RoastScene, TruckScene, WarehouseScene } from '../components/Scene3D.tsx'
+import { CanScene, ColdRoomScene, ContainerScene, IncotermScene, INCO, type Inco, PalletScene, RoastScene, TruckScene, WarehouseScene } from '../components/Scene3D.tsx'
 import { F, R, useForm } from './Tools.tsx'
 
 const PROD: [string, number, number][] = [['Spaghetti', 880, 1.2], ['Fusilli', 430, 1.8], ['Arroz 1 kg', 1020, 1.1], ['Café en paquetes', 520, 1.6], ['Conservas de atún', 760, 1.2]]
@@ -7,8 +7,8 @@ const PROD: [string, number, number][] = [['Spaghetti', 880, 1.2], ['Fusilli', 4
 export function View3D() {
   return <>
     <h1>Cargas en 3D</h1>
-    <p className="muted">Seis escenas a escala real para ver lo que los números dicen: palés a medias, camiones que se llenan por peso o por espacio, un contenedor de café, la merma de tueste, un almacén con su punto de pedido y una cámara de salmón fresco. Los valores iniciales son <b>simulados</b>.</p>
-    <Pales /><Camion /><Contenedor /><Tueste /><Almacen /><Camara />
+    <p className="muted">Ocho escenas para ver lo que los números dicen: palés a medias, camiones que se llenan por peso o por espacio, un contenedor de café, la merma de tueste, un almacén con su punto de pedido, una cámara de salmón fresco, la ruta de los Incoterms y dos latas de atún en corte. Los valores iniciales son <b>simulados</b>.</p>
+    <Pales /><Camion /><Contenedor /><Tueste /><Almacen /><Camara /><Incoterms3D /><Latas />
     <div className="note"><b>Realidad virtual:</b> si abrís esta página en un visor o navegador compatible con WebXR aparece el botón «Entrar en realidad virtual», que te sitúa de pie junto a la carga. No he podido probar ese modo con un visor real. En ordenador y teléfono la escena se explora girándola con el ratón o los dedos.</div>
   </>
 }
@@ -30,7 +30,7 @@ function Pales() {
       <div><R label="Cajas" v={cajas} d={0} /><R label="Palés" v={Math.ceil(cajas / n('cpp'))} d={0} strong /><R label="Unidades para completar palés" v={Math.ceil(cajas / n('cpp')) * n('cpp') * n('upc') - n('u')} d={0} /></div></div>
     <PalletScene cajas={isFinite(cajas) ? cajas : 0} cpp={n('cpp') || 0} /></section>
 }
-function Camion() {
+export function Camion() {
   const [p, setP] = useState(1)
   const { n, bind } = useForm({ kg: '' })
   const kg = n('kg') || PROD[p][1]
@@ -49,14 +49,14 @@ function Contenedor() {
 const Dia = ({ v, max, set }: { v: number; max: number; set: (n: number) => void }) =>
   <label className="field"><span>Avanzar el tiempo: día {v}</span><div><input type="range" min={0} max={max} step={1} value={v} onChange={(e) => set(Number(e.target.value))} /></div></label>
 
-function Tueste() {
+export function Tueste() {
   const { n, bind } = useForm({ s: '199', m: '16', g: '250' })
   return <section className="card"><h3>La merma de tueste, a la vista</h3>
     <div className="toolgrid"><div><F label="Sacos de café verde (60 kg)" unit="sacos" {...bind('s')} /><F label="Merma de tueste" unit="%" {...bind('m')} /><F label="Formato del paquete" unit="g" {...bind('g')} /></div>
       <div><R label="Café verde" v={n('s') * 60} unit="kg" d={0} /><R label="Café tostado" v={n('s') * 60 * (1 - n('m') / 100)} unit="kg" d={0} strong /><R label="Peso que se evapora" v={n('s') * 60 * (n('m') / 100)} unit="kg" d={0} /></div></div>
     <RoastScene sacos={Math.round(n('s')) || 0} merma={isFinite(n('m')) ? n('m') : -1} gramos={n('g') || 0} /></section>
 }
-function Almacen() {
+export function Almacen() {
   const [dia, setDia] = useState(0)
   const { n, bind } = useForm({ s: '48000', c: '960', lt: '30', ss: '9600', kp: '600' })
   return <section className="card"><h3>Almacén: stock, punto de pedido y stock de seguridad</h3>
@@ -64,11 +64,39 @@ function Almacen() {
       <div><F label="Stock de seguridad" unit="kg" {...bind('ss')} /><F label="Peso por palé" unit="kg" {...bind('kp')} /><Dia v={dia} max={60} set={setDia} /></div></div>
     <WarehouseScene stock={n('s')} cons={n('c')} plazo={n('lt')} ss={n('ss')} kgPale={n('kp')} dia={dia} /></section>
 }
-function Camara() {
+export function Camara() {
   const [dia, setDia] = useState(0)
   const { n, bind } = useForm({ kg: '480', v: '57', vida: '7', c: '12,58', l: '6' })
   return <section className="card"><h3>Cámara de salmón fresco: lo que no se vende a tiempo</h3>
     <div className="toolgrid"><div><F label="Filete comprado" unit="kg" {...bind('kg')} /><F label="Venta por día" unit="kg/día" {...bind('v')} /><F label="Vida útil comercial" unit="días" {...bind('vida')} /></div>
       <div><F label="Coste del filete" unit="€/kg" {...bind('c')} /><F label="Valor de liquidación" unit="€/kg" {...bind('l')} /><Dia v={dia} max={Math.max(2, Math.round(n('vida') || 7) + 2)} set={setDia} /></div></div>
     <ColdRoomScene kg={n('kg')} venta={n('v')} vida={Math.round(n('vida')) || 0} coste={n('c')} liq={n('l')} dia={dia} /></section>
+}
+
+export function Incoterms3D() {
+  const [t, setT] = useState<Inco>('FOB')
+  return <section className="card"><h3>Incoterms: quién paga cada tramo y dónde pasa el riesgo</h3>
+    <div className="chips">{(Object.keys(INCO) as Inco[]).map((k) => <button key={k} className={'chip' + (k === t ? ' on' : '')} onClick={() => setT(k)}>{k}</button>)}</div>
+    <IncotermScene term={t} /></section>
+}
+export function Latas() {
+  const { n, bind } = useForm({ na: '160', ea: '112', pa: '1,42', nb: '160', eb: '104', pb: '1,24' })
+  return <section className="card"><h3>Atún: peso neto y peso escurrido, en corte</h3>
+    <div className="toolgrid"><div><F label="Lata A · peso neto" unit="g" {...bind('na')} /><F label="Lata A · peso escurrido" unit="g" {...bind('ea')} /><F label="Lata A · precio" unit="€" {...bind('pa')} /></div>
+      <div><F label="Lata B · peso neto" unit="g" {...bind('nb')} /><F label="Lata B · peso escurrido" unit="g" {...bind('eb')} /><F label="Lata B · precio" unit="€" {...bind('pb')} /></div></div>
+    <div className="toolgrid"><R label="A · por kg escurrido" v={n('pa') / (n('ea') / 1000)} unit="€/kg" strong /><R label="B · por kg escurrido" v={n('pb') / (n('eb') / 1000)} unit="€/kg" strong /></div>
+    <CanScene cans={[{ label: 'Lata A', neto: n('na') || 0, esc: n('ea') || 0 }, { label: 'Lata B', neto: n('nb') || 0, esc: n('eb') || 0 }]} /></section>
+}
+/** Escena 3D asociada a una lección o a un caso, si la hay. */
+export function sceneFor(id: string) {
+  switch (id) {
+    case 'k-tueste': return <Tueste />
+    case 'g-cargas': case 'pasta-promo': case 's-pasta': return <Camion />
+    case 'g-incoterms': case 'incoterms-oferta': return <Incoterms3D />
+    case 's-atun': case 'atun-ofertas': return <Latas />
+    case 'g-stock': case 'cafe-retraso': return <Almacen />
+    case 's-salmon': case 'salmon-prevision': return <Camara />
+    case 'b-unidades': return <section className="card"><h3>Cajas sobre palés</h3><PalesPresets /></section>
+    default: return null
+  }
 }

@@ -4,6 +4,7 @@ import { DIAG_SKILLS, SKILL_LESSON } from '../content/misc.ts'
 import { SKILLS, skillById } from '../content/skills.ts'
 import { Drill, Runner } from '../components/Runner.tsx'
 import { Rich } from '../components/Rich.tsx'
+import { sceneFor } from './View3D.tsx'
 import { check } from '../lib/num.ts'
 import { dueSkills, skillSt, today, useStore, type State } from '../lib/store.tsx'
 import { SECTORS, type Lesson, type NumStep } from '../lib/types.ts'
@@ -121,6 +122,7 @@ export function LessonPage({ id }: { id: string }) {
     <h1>{l.title}</h1>
     <article className="card"><Rich text={l.body} /></article>
     {!s.read[l.id] && <button className="btn primary" onClick={() => set((st) => ({ ...st, read: { ...st.read, [l.id]: true } }))}>Marcar como leída</button>}
+    {sceneFor(l.id) && <section><h2>Verlo en 3D</h2>{sceneFor(l.id)}</section>}
     {l.quiz && <section><h2>Comprobá que lo entendiste</h2><Runner runId={'quiz-' + l.id} steps={l.quiz} /></section>}
     {l.skills && <section><h2>Práctica</h2>
       <p className="muted">Ejercicios cortos con números que cambian cada vez. Entran automáticamente en tu repaso espaciado.</p>

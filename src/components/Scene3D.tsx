@@ -31,6 +31,8 @@ export function Scene3D({ build, deps, height = 320 }: { build: Build; deps: unk
     const content = new THREE.Group(); scene.add(content)
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true; controls.maxPolarAngle = Math.PI / 2 - 0.02
+    // En el teléfono, el arrastre vertical sigue desplazando la página; el horizontal gira la escena.
+    renderer.domElement.style.touchAction = 'pan-y'
     const resize = () => { const w = el.clientWidth, h = el.clientHeight; if (!w || !h) return; renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix() }
     resize(); const ro = new ResizeObserver(resize); ro.observe(el)
     renderer.setAnimationLoop(() => { if (!renderer.xr.isPresenting) controls.update(); renderer.render(scene, camera) })
@@ -51,11 +53,12 @@ export function Scene3D({ build, deps, height = 320 }: { build: Build; deps: unk
     if (Math.abs(view.radius - a.radius) > 0.01) {
       a.radius = view.radius
       if (a.grid) { a.scene.remove(a.grid); a.grid.geometry.dispose(); (a.grid.material as THREE.Material).dispose() }
-      const n = Math.ceil(view.radius * 4)
-      a.grid = new THREE.GridHelper(n, n, 0x9a8f83, 0xb9afa3); const gm = a.grid.material as THREE.Material; gm.transparent = true; gm.opacity = 0.45; a.scene.add(a.grid)
+      const n = Math.ceil(view.radius * 2.6)
+      a.grid = new THREE.GridHelper(n, n, 0x9a8f83, 0xb9afa3); const gm = a.grid.material as THREE.Material; gm.transparent = true; gm.opacity = 0.45; a.grid.position.set(Math.round(view.center[0]), -0.12, Math.round(view.center[2])); a.scene.add(a.grid)
       a.controls.target.set(...view.center)
-      a.camera.position.set(view.center[0] + view.radius * 1.25, view.center[1] + view.radius * 0.95, view.center[2] + view.radius * 1.7)
-      a.controls.minDistance = view.radius * 0.35; a.controls.maxDistance = view.radius * 6
+      const k = Math.min(2.4, Math.max(1, 1.75 / a.camera.aspect)) // en pantallas verticales, la cámara se aleja para que quepa todo
+      a.camera.position.set(view.center[0] + view.radius * 1.25 * k, view.center[1] + view.radius * 0.95 * k, view.center[2] + view.radius * 1.7 * k)
+      a.controls.minDistance = view.radius * 0.35; a.controls.maxDistance = view.radius * 8
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
@@ -72,13 +75,25 @@ export function Scene3D({ build, deps, height = 320 }: { build: Build; deps: unk
     } catch { setVr(false) }
   }
   const full = () => { void box.current?.requestFullscreen?.().catch(() => {}) }
+  const look = (kind: 'gen' | 'top' | 'side') => {
+    const a = api.current; if (!a) return
+    const [x, y, z] = a.view.center, r = a.view.radius * Math.min(2.4, Math.max(1, 1.75 / a.camera.aspect))
+    a.controls.target.set(x, y, z)
+    if (kind === 'gen') a.camera.position.set(x + r * 1.25, y + r * 0.95, z + r * 1.7)
+    else if (kind === 'top') a.camera.position.set(x, y + r * 2.4, z + 0.01)
+    else a.camera.position.set(x, y + r * 0.25, z + r * 2.2)
+  }
+  const zoom = (k: number) => { const a = api.current; if (!a) return; const d = a.camera.position.clone().sub(a.controls.target).multiplyScalar(k); const len = d.length(); if (len > a.controls.minDistance && len < a.controls.maxDistance) a.camera.position.copy(a.controls.target).add(d) }
 
   if (fail) return <div className="note warn">Este navegador no puede mostrar gráficos 3D (WebGL no disponible). Los resultados numéricos de arriba siguen siendo válidos.</div>
   return <div className="scene3d">
     <div ref={box} className="canvas3d" style={{ height }} />
-    <div className="row"><span className="muted small">Arrastrá para girar · rueda o pellizco para acercar · dos dedos para desplazar. Escala real en metros.</span>
+    <div className="row viewbar">
+      <button className="btn small" onClick={() => look('gen')}>Vista general</button><button className="btn small" onClick={() => look('top')}>Desde arriba</button><button className="btn small" onClick={() => look('side')}>De lado</button>
+      <button className="btn small" aria-label="Acercar" onClick={() => zoom(0.8)}>＋</button><button className="btn small" aria-label="Alejar" onClick={() => zoom(1.25)}>－</button>
       <button className="btn small" onClick={full}>Pantalla completa</button>
       {vr && <button className="btn small primary" onClick={() => void enterVr()}>Entrar en realidad virtual</button>}</div>
+    <p className="muted small">Arrastrá de lado para girar, pellizcá o usá ＋ y － para acercar. En el teléfono, deslizar hacia arriba o abajo sigue moviendo la página.</p>
   </div>
 }
 
@@ -243,4 +258,64 @@ export function RoastScene({ sacos, merma, gramos }: { sacos: number; merma: num
   return <><Scene3D build={build} deps={[sacos, merma, gramos]} height={340} />
     <p className="small"><b>Fila 1, café verde:</b> {sacos} sacos = {fmt(verde)} kg. <b>Fila 2, café tostado:</b> {fmt(tost)} kg; los {sacos - bloques} bloques en rojo translúcido son los {fmt(verde - tost)} kg que se evaporan. <b>Fila 3, envasado:</b> {fmt(paquetes)} paquetes de {gramos} g en {pales} palé{pales === 1 ? '' : 's'} (a {PP} paquetes por palé, simulado).</p>
     <p className="small muted">Pagaste y transportaste toda la fila 1; solo vendés la fila 2. Por eso el coste por kilo tostado se obtiene dividiendo entre {g(1 - merma / 100)}, no sumando un {merma} %.</p></>
+}
+
+/* ---------- Incoterms: quién paga cada tramo y dónde pasa el riesgo ---------- */
+export type Inco = 'EXW' | 'FCA' | 'FOB' | 'CFR' | 'CIF'
+const SELLER = 0xa8541c, BUYER = 0x1f5f99
+export const INCO: Record<Inco, { name: string; seller: string[]; risk: number; riskTxt: string }> = {
+  EXW: { name: 'En fábrica', seller: [], risk: 0.2, riskTxt: 'en las instalaciones del vendedor, al poner la mercancía a disposición' },
+  FCA: { name: 'Franco transportista (entrega en instalaciones del vendedor)', seller: ['carga', 'export'], risk: 1.6, riskTxt: 'al entregar la mercancía, cargada, al transportista del comprador' },
+  FOB: { name: 'Franco a bordo', seller: ['carga', 'interior', 'export', 'terminal'], risk: 13.5, riskTxt: 'cuando la mercancía está a bordo del buque en el puerto de embarque' },
+  CFR: { name: 'Coste y flete', seller: ['carga', 'interior', 'export', 'terminal', 'flete'], risk: 13.5, riskTxt: 'a bordo en el puerto de embarque, aunque el vendedor pague el flete hasta destino' },
+  CIF: { name: 'Coste, seguro y flete', seller: ['carga', 'interior', 'export', 'terminal', 'flete', 'seguro'], risk: 13.5, riskTxt: 'a bordo en el puerto de embarque, aunque el vendedor pague flete y seguro hasta destino' },
+}
+export const TRAMOS: [string, string, number, number][] = [
+  ['carga', 'Carga en fábrica', -0.8, 1.2], ['interior', 'Transporte hasta el puerto', 1.4, 8.8], ['export', 'Despacho de exportación', 9, 10.4], ['terminal', 'Terminal y carga a bordo', 10.6, 13.2],
+  ['flete', 'Flete marítimo', 13.4, 29.4], ['import', 'Descarga y despacho de importación', 29.6, 32], ['entrega', 'Transporte hasta el almacén', 32.2, 40.8],
+]
+export function IncotermScene({ term }: { term: Inco }) {
+  const build: Build = (g) => {
+    const t = INCO[term]
+    const slab = (x0: number, x1: number, z: number, w: number, color: number, y = 0.03, h = 0.06, op = 1) => { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h, w), mat(color, op < 1 ? { transparent: true, opacity: op } : {})); m.position.set((x0 + x1) / 2, y, z); g.add(m) }
+    const block = (x: number, y: number, z: number, w: number, h: number, d: number, color: number) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color)); m.position.set(x, y + h / 2, z); g.add(m) }
+    slab(-3, 12.4, 0, 9, 0xb5ad9a, -0.06, 0.1); slab(30.6, 43, 0, 9, 0xb5ad9a, -0.06, 0.1); slab(12.4, 30.6, 0, 9, 0x4f86a8, -0.1, 0.06)
+    block(0, 0, -1.6, 2.6, 1.6, 2.2, 0x8a7a66); block(-0.7, 1.6, -1.6, 0.4, 0.9, 0.4, 0x6f655d) // fábrica
+    block(40, 0, -1.6, 2.8, 1.4, 2.4, 0x8a7a66) // almacén del comprador
+    for (const x of [11.4, 31.4]) { block(x, 0, -2, 0.3, 3.4, 0.3, 0xd39a2c); block(x + (x < 20 ? 0.9 : -0.9), 3.1, -2, 2.2, 0.25, 0.3, 0xd39a2c) } // grúas
+    block(5, 0.25, 0, 1.6, 0.7, 0.8, CARTON); block(6.1, 0.25, 0, 0.5, 0.55, 0.8, 0x2a2420); block(36, 0.25, 0, 1.6, 0.7, 0.8, CARTON); block(37.1, 0.25, 0, 0.5, 0.55, 0.8, 0x2a2420) // camiones
+    block(20, -0.05, 0, 6.4, 0.9, 1.9, 0x3a3f47); block(22.4, 0.85, 0, 1, 1.2, 1.5, 0xe8e2d8) // buque
+    for (let i = 0; i < 4; i++) block(17.9 + i * 1.02, 0.85, 0, 0.95, 0.5 + (i % 2) * 0.5, 1.5, [CARTON, SELLER, 0x3f7f5f, BUYER][i])
+    for (const [k, , x0, x1] of TRAMOS) slab(x0, x1, 3, 0.9, t.seller.includes(k) ? SELLER : BUYER)
+    slab(13.4, 29.4, 4.1, 0.5, term === 'CIF' ? SELLER : 0x8f8a82, 0.03, 0.06, term === 'CIF' ? 1 : 0.5) // seguro
+    slab(-0.8, t.risk, -3.6, 0.5, SELLER); slab(t.risk, 40.8, -3.6, 0.5, BUYER) // carril del riesgo
+    block(t.risk, 0, -3.6, 0.12, 3.2, 0.12, 0xa3322a)
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 12), mat(0xa3322a)); ball.position.set(t.risk, 3.4, -3.6); g.add(ball)
+    return { center: [20, 0.5, 0], radius: 17 }
+  }
+  const t = INCO[term]
+  return <><Scene3D build={build} deps={[term]} height={300} />
+    <p className="small"><b>{term} · {t.name}.</b> El riesgo pasa al comprador {t.riskTxt} (poste rojo).</p>
+    <div className="tablewrap"><table><thead><tr><th>Tramo</th><th>Quién lo paga</th></tr></thead><tbody>
+      {TRAMOS.map(([k, l]) => <tr key={k}><td>{l}</td><td><span className={'k ' + (t.seller.includes(k) ? 'supuesto' : 'aportado')}>{t.seller.includes(k) ? 'Vendedor' : 'Comprador'}</span></td></tr>)}
+      <tr><td>Seguro de transporte</td><td>{term === 'CIF' ? <span className="k supuesto">Vendedor (obligatorio, a favor del comprador)</span> : <span className="muted">No lo impone la regla: lo contrata quien soporta el riesgo, si quiere</span>}</td></tr></tbody></table></div>
+    <p className="small muted">Carril del frente: costes (naranja = vendedor, azul = comprador). Carril del fondo: quién soporta el riesgo. Esquema didáctico, no a escala, según Incoterms® 2020; lo que obliga es el contrato y el texto oficial.</p></>
+}
+
+/** Dos latas en corte: pescado (sólido) y líquido de cobertura (translúcido), en proporción al peso. */
+export function CanScene({ cans }: { cans: { label: string; neto: number; esc: number }[] }) {
+  const ok = cans.every((c) => c.neto > 0 && c.esc > 0 && c.esc <= c.neto)
+  const build: Build = (g) => {
+    cans.forEach((c, i) => {
+      const x = i * 3.2, H = 1.6, R = 1.15, hf = (c.esc / c.neto) * H
+      const fish = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.96, R * 0.96, hf, 40), mat(0xd9a08a)); fish.position.set(x, hf / 2, 0); g.add(fish)
+      const liq = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.96, R * 0.96, H - hf, 40), mat(0xe2c044, { transparent: true, opacity: 0.45, depthWrite: false })); liq.position.set(x, hf + (H - hf) / 2, 0); g.add(liq)
+      const wall = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 40, 1, true, Math.PI * 0.25, Math.PI * 1.25), mat(0x9aa3ad, { side: THREE.DoubleSide, metalness: 0.6, roughness: 0.35 })); wall.position.set(x, H / 2, 0); g.add(wall)
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 0.05, 40), mat(0x7d8791)); base.position.set(x, -0.025, 0); g.add(base)
+    })
+    return { center: [(cans.length - 1) * 1.6, 0.7, 0], radius: 3.4 }
+  }
+  if (!ok) return <p className="muted small">El peso escurrido debe ser mayor que cero y no superar el peso neto.</p>
+  return <><Scene3D build={build} deps={[JSON.stringify(cans)]} height={280} />
+    <p className="small">{cans.map((c) => <span key={c.label}><b>{c.label}:</b> {g(c.esc)} g de pescado de {g(c.neto)} g netos ({f((c.esc / c.neto) * 100, 0)} %). </span>)}En amarillo translúcido, el líquido de cobertura: forma parte del peso neto, pero no es pescado.</p></>
 }
