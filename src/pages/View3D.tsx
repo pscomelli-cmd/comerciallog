@@ -94,7 +94,7 @@ export function sceneFor(id: string) {
     case 'g-cargas': case 'pasta-promo': case 's-pasta': return <Camion />
     case 'g-incoterms': case 'incoterms-oferta': return <Incoterms3D />
     case 's-atun': case 'atun-ofertas': return <Latas />
-    case 'g-stock': case 'cafe-retraso': return <Almacen />
+    case 'g-stock': case 'cafe-retraso': case 'cafe-reclamacion': return <Almacen />
     case 's-salmon': case 'salmon-prevision': return <Camara />
     case 'b-unidades': return <section className="card"><h3>Cajas sobre palés</h3><PalesPresets /></section>
     default: return null
