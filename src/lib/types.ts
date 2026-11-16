@@ -68,13 +68,13 @@ export interface Skill {
   id: string
   title: string
   sector: Sector
-  topic: 'bases' | 'cafe' | 'sectores' | 'logistica'
+  topic: 'bases' | 'cafe' | 'sectores' | 'logistica' | 'internacional' | 'mental'
   gen: (level: number) => NumStep
 }
 
 export interface Lesson {
   id: string
-  track: 'bases' | 'cafe' | 'sectores' | 'logistica' | 'comercial'
+  track: 'bases' | 'cafe' | 'sectores' | 'logistica' | 'comercial' | 'internacional'
   unit: string
   title: string
   sector: Sector

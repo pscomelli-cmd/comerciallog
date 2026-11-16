@@ -1,6 +1,6 @@
 # ComercialLog
 
-Plataforma interactiva en español para entrenar gestión comercial, compras, logística y supply chain agroalimentaria. Sectores: **café** (recorrido principal, la mitad de los casos), arroz, pasta, atún y salmón, distinguiendo materia prima, semielaborado y producto terminado.
+Plataforma interactiva en español para entrenar gestión comercial, compras, logística y supply chain agroalimentaria. Sectores: **café** (recorrido principal, 40 % de los casos), arroz, pasta, atún y salmón, distinguiendo materia prima, semielaborado y producto terminado.
 
 ## Qué incluye
 
@@ -8,9 +8,10 @@ Plataforma interactiva en español para entrenar gestión comercial, compras, lo
 - **Bases de matemática comercial**: unidades, proporciones, porcentajes, mezclas, ventas netas, margen frente a recargo, coste entregado, contribución, financiación.
 - **Recorrido de café**: producto, lectura de ofertas, referencia + diferencial, precio fijo o a fijar, coberturas, coste puesto en almacén, merma de tueste, canales, logística y calidad.
 - **Arroz, pasta, atún y salmón**: particularidades y por qué la misma fórmula necesita datos distintos.
+- **Negocios internacionales**: los cinco riesgos, divisas, medios de pago, aduanas y origen, elección de mercado y socio, negociación entre culturas.
 - **Logística y comercio internacional**: stock, punto de pedido, peso frente a volumen, Incoterms (EXW, FCA, FOB, CFR, CIF), documentación.
-- **12 casos** en siete fases (comprender, qué falta, a quién consultar, calcular, comparar, decidir, comunicar), con datos progresivos y evaluación por dimensión.
-- **25 ejercicios generativos** con dificultad adaptativa y repetición espaciada.
+- **15 casos** en siete fases (comprender, qué falta, a quién consultar, calcular, comparar, decidir, comunicar), con datos progresivos y evaluación por dimensión.
+- **36 ejercicios generativos** con dificultad adaptativa y repetición espaciada, incluido un modo de **cálculo mental** sin calculadora.
 - **Calculadoras**, fórmulas de **Excel en italiano**, **correos modelo** en español, italiano, inglés y portugués, **glosario**.
 - **Cargas en 3D** (three.js): palés, camión, contenedor de café, merma de tueste, almacén con punto de pedido, cámara de salmón, ruta de Incoterms y latas de atún en corte; integradas en lecciones y casos. Incluye un botón de realidad virtual (WebXR) que solo aparece en dispositivos compatibles y no se ha probado con un visor.
 - **Mis casos**: casos propios anonimizados, separando datos aportados, resultados calculados, supuestos y pendientes.

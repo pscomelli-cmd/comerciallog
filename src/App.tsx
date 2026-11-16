@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Calculator } from './components/Calculator.tsx'
 import { dueSkills, useStore } from './lib/store.tsx'
 import { lessonById } from './content/index.ts'
-import { Home, Diagnostico, Track, LessonPage, Practice, Review } from './pages/Learn.tsx'
+import { Home, Diagnostico, Track, LessonPage, Practice, Review, Mental } from './pages/Learn.tsx'
 import { CasesList, CasePage } from './pages/Cases.tsx'
 import { Tools } from './pages/Tools.tsx'
 import { ExcelPage, Comms, Glossary } from './pages/Reference.tsx'
@@ -11,8 +11,8 @@ import { Progress } from './pages/Progress.tsx'
 import { View3D } from './pages/View3D.tsx'
 
 const NAV: [string, [string, string][]][] = [
-  ['Empezar', [['', 'Inicio'], ['diagnostico', 'Diagnóstico inicial'], ['repaso', 'Repaso de hoy']]],
-  ['Aprender', [['ruta/bases', 'Bases matemáticas'], ['ruta/cafe', 'Recorrido de café'], ['ruta/sectores', 'Arroz, pasta, atún, salmón'], ['ruta/logistica', 'Logística e Incoterms'], ['ruta/comercial', 'Gestión comercial']]],
+  ['Empezar', [['', 'Inicio'], ['diagnostico', 'Diagnóstico inicial'], ['repaso', 'Repaso de hoy'], ['mental', 'Cálculo mental']]],
+  ['Aprender', [['ruta/bases', 'Bases matemáticas'], ['ruta/cafe', 'Recorrido de café'], ['ruta/sectores', 'Arroz, pasta, atún, salmón'], ['ruta/logistica', 'Logística e Incoterms'], ['ruta/internacional', 'Negocios internacionales'], ['ruta/comercial', 'Gestión comercial']]],
   ['Practicar', [['casos', 'Casos y simulaciones'], ['mis-casos', 'Mis casos'], ['correos', 'Correos en 4 idiomas']]],
   ['Consultar', [['herramientas', 'Calculadoras'], ['3d', 'Cargas en 3D'], ['excel', 'Excel en italiano'], ['glosario', 'Glosario'], ['progreso', 'Mi progreso']]],
 ]
@@ -30,7 +30,7 @@ export function App() {
   const due = dueSkills(s).length
   const active = a === 'caso' ? 'casos' : a === 'leccion' ? 'ruta/' + (lessonById(b)?.track ?? '') : a === 'practica' ? 'repaso' : path
   const page = a === '' ? <Home /> : a === 'diagnostico' ? <Diagnostico /> : a === 'ruta' ? <Track id={b} /> : a === 'leccion' ? <LessonPage id={b} />
-    : a === 'practica' ? <Practice id={b} /> : a === 'repaso' ? <Review /> : a === 'casos' ? <CasesList /> : a === 'caso' ? <CasePage id={b} />
+    : a === 'practica' ? <Practice id={b} /> : a === 'repaso' ? <Review /> : a === 'mental' ? <Mental /> : a === 'casos' ? <CasesList /> : a === 'caso' ? <CasePage id={b} />
     : a === '3d' ? <View3D /> : a === 'herramientas' ? <Tools /> : a === 'excel' ? <ExcelPage /> : a === 'correos' ? <Comms /> : a === 'glosario' ? <Glossary />
     : a === 'mis-casos' ? <MyCases /> : a === 'progreso' ? <Progress /> : <Home />
   return <div className="shell">

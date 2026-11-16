@@ -101,7 +101,7 @@ export function Track({ id }: { id: string }) {
   if (!t) return <p>Recorrido no encontrado.</p>
   const ls = LESSONS.filter((l) => l.track === id)
   const units = [...new Set(ls.map((l) => l.unit))]
-  const related = CASES.filter((c) => (id === 'cafe' ? c.sector === 'cafe' : id === 'sectores' ? ['arroz', 'pasta', 'atun', 'salmon'].includes(c.sector) : id === 'logistica' ? ['cajas-pales', 'incoterms-oferta', 'cafe-retraso'].includes(c.id) : false))
+  const related = CASES.filter((c) => (id === 'cafe' ? c.sector === 'cafe' : id === 'sectores' ? ['arroz', 'pasta', 'atun', 'salmon'].includes(c.sector) : id === 'logistica' ? ['cajas-pales', 'incoterms-oferta', 'cafe-retraso'].includes(c.id) : id === 'internacional' ? c.id.startsWith('int-') || ['incoterms-oferta', 'cafe-fijacion'].includes(c.id) : id === 'comercial' ? ['cafe-horeca', 'arroz-licitacion', 'pasta-promo', 'atun-ofertas'].includes(c.id) : false))
   return <>
     <h1>{t.title}</h1><p className="muted">{t.desc}</p>
     {units.map((u) => <section key={u}><h2>{u}</h2><div className="list">{ls.filter((l) => l.unit === u).map((l) =>
@@ -150,5 +150,25 @@ export function Review() {
         <a className="btn" href={seen ? '#/casos' : '#/diagnostico'}>{seen ? 'Hacer un caso' : 'Hacer el diagnóstico'}</a></div>}
     <h2>Práctica libre</h2>
     <div className="chips">{SKILLS.map((k) => <a key={k.id} className="chip" href={'#/practica/' + k.id}>{k.title}</a>)}</div>
+  </>
+}
+
+/** Ronda de cálculo mental: sin calculadora y sin reloj. */
+export function Mental() {
+  const [round, setRound] = useState(0)
+  const [queue] = useState(() => SKILLS.filter((k) => k.topic === 'mental').map((k) => k.id))
+  const order = [...queue, ...queue].sort(() => Math.random() - 0.5)
+  return <>
+    <h1>Cálculo mental</h1>
+    <p className="muted">Rondas cortas para resolver <b>sin calculadora</b>: porcentajes, márgenes, divisas, plazos y unidades con números pensados para hacerse de cabeza. No hay reloj. Si te trabás, pedí la pista: te da la técnica, no el resultado.</p>
+    <div className="card rich"><b>Seis técnicas que cubren casi todo</b><ul>
+      <li><b>10 %</b> es correr la coma; de ahí salen el 5 % (mitad), el 20 % (doble) y el 15 % (suma).</li>
+      <li><b>Margen del 20 %</b>: sumá un cuarto al coste. <b>25 %</b>: sumá un tercio. <b>50 %</b>: el doble.</li>
+      <li><b>¢/lb a USD/t</b>: multiplicá por 22.</li>
+      <li><b>Paquetes de 250 g</b>: dividí entre 4. <b>De 500 g</b>: entre 2.</li>
+      <li><b>Plazos</b>: tipo anual ÷ 12 = coste de cada mes.</li>
+      <li><b>Dólares a euros</b> con el cambio a 1,10: quitá una onceava parte.</li></ul></div>
+    <Drill key={round} skills={order} review />
+    <button className="btn" onClick={() => setRound(round + 1)}>Empezar otra ronda</button>
   </>
 }

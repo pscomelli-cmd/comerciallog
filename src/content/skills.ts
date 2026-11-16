@@ -441,6 +441,131 @@ export const SKILLS: Skill[] = [
       })
     },
   },
+  /* ---------------- NEGOCIOS INTERNACIONALES ---------------- */
+  {
+    id: 'fx-impacto', title: 'Impacto de la divisa en una compra', sector: 'comun', topic: 'internacional',
+    gen: (lv) => {
+      const usd = lv === 1 ? pick([50000, 100000, 200000]) : rnd(40, 320) * 1000, f0 = lv === 1 ? 1.1 : rnd(104, 116) / 100
+      const f1 = Math.round((f0 + pick([-1, 1]) * (lv === 1 ? 0.1 : rnd(3, 9) / 100)) * 100) / 100, a = usd / f1 - usd / f0
+      return N({
+        id: 'fx-impacto', dim: 'interpretacion', unit: '€', a, tol: 0.02,
+        q: `Tenés que pagar **${f(usd, 0)} USD** a un proveedor. Al firmar, el cambio era **1 € = ${f(f0)} USD**; el día del pago es **1 € = ${f(f1)} USD**${SIM}. ¿Cuántos **euros de más** te cuesta? (Si te cuesta menos, respondé en negativo.)`,
+        hints: ['Calculá el coste en euros con cada tipo de cambio y restá.', 'De USD a EUR se divide entre los dólares que vale un euro.', `Operación: ${usd} ÷ ${g(f1)} − ${usd} ÷ ${g(f0)}`],
+        sol: [`Al firmar: ${f(usd, 0)} ÷ ${f(f0)} = ${f(usd / f0, 0)} €`, `Al pagar: ${f(usd, 0)} ÷ ${f(f1)} = ${f(usd / f1, 0)} €`, `Diferencia: **${f(a, 0)} €** (${a > 0 ? 'el euro se debilitó: comprar dólares cuesta más' : 'el euro se fortaleció: comprar dólares cuesta menos'})`],
+        keys: `${usd} ÷ ${g(f1)} − ${usd} ÷ ${g(f0)} =`,
+        traps: [{ v: usd * f1 - usd * f0, kind: 'unidades', msg: 'Multiplicaste por el tipo de cambio. Con «1 € = x USD», los dólares se convierten a euros dividiendo.' }, { v: -a, kind: 'interpretacion', msg: 'El importe es correcto pero el sentido no: si un euro compra menos dólares, tu pago en dólares cuesta más euros.' }],
+        means: 'Quien **paga** en dólares pierde cuando el euro baja; quien **cobra** en dólares, gana. Preguntate siempre de qué lado estás antes de decir si un movimiento es bueno o malo.',
+      })
+    },
+  },
+  {
+    id: 'precio-usd', title: 'Ofertar en dólares con margen en euros', sector: 'comun', topic: 'internacional',
+    gen: (lv) => {
+      const c = lv === 1 ? pick([1, 2, 4]) : rnd(95, 640) / 100, m = lv === 1 ? 20 : rnd(8, 28), fx = lv === 1 ? 1.1 : rnd(103, 117) / 100, a = (c / (1 - m / 100)) * fx
+      return N({
+        id: 'precio-usd', dim: 'unidades', unit: 'USD/kg', a,
+        q: `Tu coste es **${f(c)} €/kg** y querés un **margen del ${m} % sobre ventas**. El cliente quiere la oferta en dólares; el cambio es **1 € = ${f(fx)} USD**${SIM}. ¿Qué **precio en USD/kg** ofertás?`,
+        hints: ['Primero el precio en euros: coste ÷ (1 − margen).', 'De euros a dólares, ahora sí, se multiplica por los dólares que vale un euro.', `Operación: ${g(c)} ÷ ${g(1 - m / 100)} × ${g(fx)}`],
+        sol: [`Precio en euros: ${f(c)} ÷ ${g(1 - m / 100)} = ${f(c / (1 - m / 100), 3)} €/kg`, `En dólares: × ${f(fx)} = **${f(a, 3)} USD/kg**`],
+        keys: `${g(c)} ÷ ${g(1 - m / 100)} × ${g(fx)} =`,
+        traps: [{ v: c / (1 - m / 100) / fx, kind: 'unidades', msg: 'Dividiste entre el tipo de cambio. De euros a dólares se multiplica: un euro son más de un dólar, así que el número en dólares es mayor.' }, { v: c * (1 + m / 100) * fx, kind: 'interpretacion', msg: 'Aplicaste un recargo sobre coste en lugar de un margen sobre ventas.' }],
+        means: 'Al ofertar en dólares, el margen en euros queda expuesto desde que das el precio hasta que cobrás. Indicá siempre la validez de la oferta y pensá con finanzas si se cubre el cobro.',
+      })
+    },
+  },
+  {
+    id: 'arancel', title: 'Coste con arancel de importación', sector: 'comun', topic: 'internacional',
+    gen: (lv) => {
+      const cif = lv === 1 ? pick([2000, 4000, 5000]) : rnd(180, 620) * 10, d = lv === 1 ? pick([10, 20]) : pick([4.5, 7.7, 12, 15, 22, 24]), otros = lv >= 2 ? rnd(40, 160) : 0, a = cif * (1 + d / 100) + otros
+      return N({
+        id: 'arancel', dim: 'supuestos', unit: '€/t', a,
+        q: `Importás un producto con valor en aduana (CIF) de **${f(cif, 0)} €/t**. El arancel aplicable es del **${g(d)} %** (simulado; el real depende del código arancelario y del origen)` + (otros ? `, y los gastos de despacho y puerto son **${otros} €/t**` : '') + `. ¿Cuál es el **coste por tonelada** tras la importación, sin IVA?`,
+        hints: ['El arancel se calcula sobre el valor en aduana.', otros ? 'Los gastos de despacho se suman después: no pagan arancel.' : `Multiplicá por ${g(1 + d / 100)}.`, `Operación: ${cif} × ${g(1 + d / 100)}${otros ? ` + ${otros}` : ''}`],
+        sol: [`Arancel: ${f(cif, 0)} × ${g(d)} % = ${f((cif * d) / 100)} €/t`, `Coste: ${f(cif, 0)} + ${f((cif * d) / 100)}${otros ? ` + ${otros}` : ''} = **${f(a)} €/t**`],
+        keys: `${cif} × ${g(1 + d / 100)}${otros ? ` + ${otros}` : ''} =`,
+        traps: otros ? [{ v: (cif + otros) * (1 + d / 100), kind: 'supuesto', msg: 'Aplicaste el arancel también a los gastos locales de despacho. La base es el valor en aduana.' }] : [],
+        means: 'El arancel es un coste real que se suma al producto. El IVA de importación, en cambio, normalmente se recupera: no es coste, pero sí hay que adelantarlo (caja). Un origen con acuerdo preferencial puede cambiar por completo qué proveedor conviene.',
+      })
+    },
+  },
+  {
+    id: 'pronto-pago', title: 'Descuento por pronto pago: ¿cuánto cuesta al año?', sector: 'comun', topic: 'bases',
+    gen: (lv) => {
+      const d = lv === 1 ? 2 : pick([1, 1.5, 2, 3]), n1 = lv === 1 ? 60 : pick([60, 90, 120]), n0 = lv === 1 ? 30 : pick([10, 15, 30]), a = (d / (n1 - n0)) * 360
+      return N({
+        id: 'pronto-pago', dim: 'interpretacion', unit: '% anual', a, tol: 0.01,
+        q: `Un proveedor ofrece **${g(d)} % de descuento** si pagás a **${n0} días** en lugar de a **${n1} días**. ¿A qué **tipo de interés anual** (simple, año de 360 días) equivale ese descuento?`,
+        hints: ['El descuento remunera adelantar el pago unos días concretos.', `Días adelantados: ${n1} − ${n0} = ${n1 - n0}. Repartí el descuento entre esos días y llevalo a 360.`, `Operación: ${g(d)} ÷ ${n1 - n0} × 360`],
+        sol: [`Días adelantados: ${n1 - n0}`, `${g(d)} % por ${n1 - n0} días → ${g(d)} ÷ ${n1 - n0} × 360 = **${f(a, 1)} % anual**`],
+        keys: `${g(d)} ÷ ${n1 - n0} × 360 =`,
+        mental: `${n1 - n0} días caben ${g(360 / (n1 - n0), 1)} veces en un año: multiplicá el descuento por ese número.`,
+        traps: [{ v: (d / n1) * 360, kind: 'supuesto', msg: `Dividiste entre ${n1} días. Lo que se adelanta son solo ${n1 - n0} días.` }],
+        means: 'Si a tu empresa el dinero le cuesta menos que ese porcentaje y tiene caja, conviene aceptar el pronto pago. Vale igual al revés: es lo que te cuesta ofrecérselo a un cliente.',
+      })
+    },
+  },
+  {
+    id: 'rappel-tramo', title: 'Rappel por tramos', sector: 'comun', topic: 'bases',
+    gen: (lv) => {
+      const umbral = pick([100000, 200000, 300000]), r = pick([1, 2, 3]), compras = umbral + rnd(1, 9) * 10000, total = lv === 1
+      const a = total ? (compras * r) / 100 : ((compras - umbral) * r) / 100
+      return N({
+        id: 'rappel-tramo', dim: 'supuestos', unit: '€', a,
+        q: `Acuerdo anual: **rappel del ${r} %** ${total ? '**sobre todas las compras**' : '**sobre lo que exceda**'} si el cliente supera **${f(umbral, 0)} €**. Ha comprado **${f(compras, 0)} €**${SIM}. ¿Cuánto rappel le corresponde?`,
+        hints: ['Leé bien la base: ¿todo o solo el exceso?', total ? 'Al superar el umbral, el porcentaje se aplica a todas las compras.' : `Solo cuenta lo que supera el umbral: ${f(compras, 0)} − ${f(umbral, 0)}.`, total ? `Operación: ${compras} × ${r} %` : `Operación: (${compras} − ${umbral}) × ${r} %`],
+        sol: total ? [`${f(compras, 0)} × ${r} % = **${f(a, 0)} €**`] : [`Exceso: ${f(compras - umbral, 0)} €`, `× ${r} % = **${f(a, 0)} €**`],
+        keys: total ? `${compras} × ${r}% =` : `(${compras} − ${umbral}) × ${r}% =`,
+        traps: [{ v: total ? ((compras - umbral) * r) / 100 : (compras * r) / 100, kind: 'supuesto', msg: total ? 'Aplicaste el rappel solo al exceso. El acuerdo dice «sobre todas las compras».' : 'Aplicaste el rappel a todas las compras. El acuerdo dice «sobre lo que exceda».' }],
+        means: 'La misma frase comercial («un 2 % si llega a 200.000») puede significar dos importes muy distintos. Con rappel sobre el total, el último euro que cruza el umbral vale miles: cuidado con los pedidos de fin de año.',
+      })
+    },
+  },
+  /* ---------------- CÁLCULO MENTAL (sin calculadora) ---------------- */
+  {
+    id: 'm-pct', title: 'Mental: porcentajes rápidos', sector: 'comun', topic: 'mental',
+    gen: () => {
+      const base = pick([240, 480, 1200, 3600, 8400, 12500, 64000]), p = pick([5, 10, 15, 20, 25, 2.5]), a = (base * p) / 100
+      const tip: Record<number, string> = { 5: 'el 10 % (correr la coma) y la mitad', 10: 'correr la coma un lugar', 15: '10 % más su mitad', 20: 'el 10 % por dos', 25: 'dividir entre 4', 2.5: 'el 10 %, la mitad y otra vez la mitad' }
+      return N({ id: 'm-pct', dim: 'calculo', unit: '', a, q: `Sin calculadora: ¿cuánto es el **${g(p)} %** de **${f(base, 0)}**?`, hints: [`Técnica: ${tip[p]}.`], sol: [`10 % de ${f(base, 0)} = ${g(base / 10)}`, `${g(p)} % → **${g(a)}**`], mental: `${g(p)} %: ${tip[p]}.`, means: 'En una negociación no siempre hay tiempo para la calculadora: saber al instante cuánto vale un punto de descuento cambia la conversación.' })
+    },
+  },
+  {
+    id: 'm-margen', title: 'Mental: de coste a precio', sector: 'comun', topic: 'mental',
+    gen: () => {
+      const [m, mult, tip] = pick([[20, 1.25, 'dividir entre 0,8 es multiplicar por 1,25: sumá una cuarta parte'], [50, 2, 'margen 50 % = el doble del coste'], [25, 4 / 3, 'dividir entre 0,75 es multiplicar por 4/3: sumá un tercio'], [10, 10 / 9, 'dividir entre 0,9: sumá una novena parte (un 11 % aproximadamente)']] as [number, number, string][])
+      const c = m === 25 ? pick([3, 6, 9, 12]) : m === 10 ? pick([9, 18, 4.5]) : pick([4, 8, 12, 20]), a = c * mult
+      return N({ id: 'm-margen', dim: 'interpretacion', unit: '€', a, tol: 0.01, q: `Sin calculadora: coste **${g(c)} €**, margen objetivo **${m} % sobre ventas**. ¿Precio?`, hints: [`Técnica: ${tip}.`], sol: [`${g(c)} ÷ ${g(1 - m / 100)} = **${f(a)} €**`], mental: tip + '.', traps: [{ v: c * (1 + m / 100), kind: 'interpretacion', msg: 'Sumaste el porcentaje al coste: eso es recargo, no margen.' }] })
+    },
+  },
+  {
+    id: 'm-clb', title: 'Mental: de ¢/lb a USD por tonelada', sector: 'cafe', topic: 'mental',
+    gen: () => {
+      const c = pick([200, 250, 300, 320, 350, 400]), a = c * 22.0462
+      return N({ id: 'm-clb', dim: 'unidades', unit: 'USD/t', a, tol: 0.025, q: `Sin calculadora, estimá: arábica a **${c} ¢/lb**. ¿Cuántos **USD por tonelada**, aproximadamente? (Se acepta un 2,5 % de error.)`, hints: ['Técnica: multiplicá por 22 (por 20, más un 10 %).'], sol: [`${c} × 20 = ${f(c * 20, 0)}`, `+ 10 % = ${f(c * 22, 0)} → valor exacto **${f(a, 0)} USD/t**`], mental: '× 22: duplicá, añadí un cero y sumá un 10 %.', means: 'Con esta estimación podés seguir una conversación sobre el mercado y detectar al vuelo una oferta fuera de rango.' })
+    },
+  },
+  {
+    id: 'm-unidades', title: 'Mental: paquetes y kilos', sector: 'comun', topic: 'mental',
+    gen: () => {
+      const gr = pick([250, 500, 200, 125]), n = pick([400, 1200, 2400, 8000, 36000]), a = (n * gr) / 1000
+      const tip: Record<number, string> = { 250: 'dividí entre 4', 500: 'dividí entre 2', 200: 'dividí entre 5', 125: 'dividí entre 8' }
+      return N({ id: 'm-unidades', dim: 'unidades', unit: 'kg', a, q: `Sin calculadora: **${f(n, 0)} paquetes de ${gr} g**. ¿Cuántos **kg**?`, hints: [`Técnica: ${tip[gr]} (caben ${1000 / gr} paquetes en un kilo).`], sol: [`${f(n, 0)} ÷ ${1000 / gr} = **${g(a)} kg**`], mental: `${gr} g: ${tip[gr]}.` })
+    },
+  },
+  {
+    id: 'm-plazo', title: 'Mental: lo que cuesta un plazo', sector: 'comun', topic: 'mental',
+    gen: () => {
+      const i = pick([6, 12, 9]), d = pick([30, 60, 90, 120]), v = pick([10000, 40000, 100000, 250000]), a = (v * i * d) / 36000
+      return N({ id: 'm-plazo', dim: 'supuestos', unit: '€', a, tol: 0.01, q: `Sin calculadora: financiar **${f(v, 0)} €** durante **${d} días** al **${i} % anual**. ¿Cuánto cuesta?`, hints: [`Técnica: al ${i} % anual, cada mes cuesta ${g(i / 12)} %. Son ${d / 30} meses.`], sol: [`${g(i / 12)} % al mes × ${d / 30} = ${g((i / 12) * (d / 30))} %`, `de ${f(v, 0)} € = **${f(a, 0)} €**`], mental: 'Pasá el tipo anual a mensual (÷ 12) y multiplicá por los meses.' })
+    },
+  },
+  {
+    id: 'm-fx', title: 'Mental: de dólares a euros', sector: 'comun', topic: 'mental',
+    gen: () => {
+      const usd = pick([1100, 5500, 22000, 4400, 88000]), fx = pick([1.1, 1.25]), a = usd / fx
+      return N({ id: 'm-fx', dim: 'unidades', unit: '€', a, tol: 0.01, q: `Sin calculadora: **${f(usd, 0)} USD** con **1 € = ${f(fx)} USD**. ¿Cuántos **euros**?`, hints: [fx === 1.1 ? 'Técnica: dividir entre 1,1 es quitar una onceava parte.' : 'Técnica: dividir entre 1,25 es multiplicar por 0,8 (quitar un 20 %).'], sol: [`${f(usd, 0)} ÷ ${f(fx)} = **${f(a, 0)} €**`], mental: fx === 1.1 ? '÷ 1,1: quitá una onceava parte (algo más del 9 %).' : '÷ 1,25 = × 0,8.', traps: [{ v: usd * fx, kind: 'unidades', msg: 'Multiplicaste. Si un euro vale más de un dólar, la misma cantidad son menos euros que dólares.' }] })
+    },
+  },
 ]
 
 export const skillById = (id: string) => SKILLS.find((k) => k.id === id)!
