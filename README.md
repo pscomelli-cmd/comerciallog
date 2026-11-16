@@ -1,140 +1,50 @@
-# ComercialLog — Plataforma de práctica Comercial & Logística
+# ComercialLog
 
-Aplicación web interactiva para practicar conceptos de ámbito **comercial** y **logístico** con tres modos de práctica: quiz, ejercicios numéricos y flashcards con repaso espaciado (Leitner).
+Plataforma interactiva en español para entrenar gestión comercial, compras, logística y supply chain agroalimentaria. Sectores: **café** (recorrido principal, 40 % de los casos), arroz, pasta, atún y salmón, distinguiendo materia prima, semielaborado y producto terminado.
 
-## Stack
+## Qué incluye
 
-- **React 19** + **Vite 8** + **TypeScript**
-- **Tailwind CSS v4** (via `@tailwindcss/vite`)
-- **React Router v7**
-- Progreso en **localStorage** (sin backend)
+- **Diagnóstico inicial**: 10 preguntas, sin tiempo ni nota.
+- **Bases de matemática comercial**: unidades, proporciones, porcentajes, mezclas, ventas netas, margen frente a recargo, coste entregado, contribución, financiación.
+- **Recorrido de café**: producto, lectura de ofertas, referencia + diferencial, precio fijo o a fijar, coberturas, coste puesto en almacén, merma de tueste, canales, logística y calidad.
+- **Arroz, pasta, atún y salmón**: particularidades y por qué la misma fórmula necesita datos distintos.
+- **Negocios internacionales**: los cinco riesgos, divisas, medios de pago, aduanas y origen, elección de mercado y socio, negociación entre culturas.
+- **Logística y comercio internacional**: stock, punto de pedido, peso frente a volumen, Incoterms (EXW, FCA, FOB, CFR, CIF), documentación.
+- **15 casos** en siete fases (comprender, qué falta, a quién consultar, calcular, comparar, decidir, comunicar), con datos progresivos y evaluación por dimensión.
+- **36 ejercicios generativos** con dificultad adaptativa y repetición espaciada, incluido un modo de **cálculo mental** sin calculadora.
+- **Calculadoras**, fórmulas de **Excel en italiano**, **correos modelo** en español, italiano, inglés y portugués, **glosario**.
+- **Cargas en 3D** (three.js): palés, camión, contenedor de café, merma de tueste, almacén con punto de pedido, cámara de salmón, ruta de Incoterms y latas de atún en corte; integradas en lecciones y casos. Incluye un botón de realidad virtual (WebXR) que solo aparece en dispositivos compatibles y no se ha probado con un visor.
+- **Mis casos**: casos propios anonimizados, separando datos aportados, resultados calculados, supuestos y pendientes.
 
-## Instalación y arranque
+Cada ejercicio: una pregunta por vez, pistas graduales, solución solo tras un intento, diagnóstico del tipo de error (cálculo, unidades, interpretación, supuesto), resolución escrita, teclas de calculadora, cálculo mental y significado comercial del resultado.
+
+## Uso
 
 ```bash
-cd frontend
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # Construir para producción
+npm run dev      # desarrollo
+npm run check    # comprueba la coherencia del contenido (respuestas, ids, trampas)
+npm run build    # genera dist/ (sitio estático)
 ```
 
-## Estructura del proyecto
+Incluye `manifest.webmanifest` e iconos, de modo que en el teléfono se puede añadir a la pantalla de inicio. `dist/` es estático y usa rutas con `#`: funciona en GitHub Pages (workflow incluido, se ejecuta al llegar a `main`), Vercel o cualquier servidor de archivos.
+
+## Dónde se guarda el progreso
+
+En el `localStorage` del navegador (clave `comerciallog.v1`). En el sitio estático no hay servidor ni cuentas: no se sincroniza entre dispositivos y se pierde si se borran los datos del sitio. Cuando la página se publica dentro de claude.ai (`scripts/single-file.py` genera el HTML único), el progreso se sincroniza además en un espacio privado del usuario. La pantalla «Mi progreso» permite descargar y restaurar una copia en JSON.
+
+## Sobre los datos
+
+- Todos los precios, costes, tipos de cambio, mermas y tarifas de los ejercicios son **simulados**. No son cotizaciones reales, actuales ni históricas.
+- Los rendimientos y medidas «orientativos» son órdenes de magnitud didácticos: el dato válido es el de cada operación.
+- El resumen de Incoterms® 2020 (Cámara de Comercio Internacional) y las menciones normativas son didácticos y no se contrastaron en línea al redactarlos; lo que obliga es el contrato y el texto oficial.
+
+## Estructura
 
 ```
-frontend/src/
-├── data/
-│   ├── types.ts           # Tipos TypeScript de todo el contenido
-│   ├── topics.ts          # Metadatos de los 14 temas
-│   ├── comercial.ts       # Contenido del área Comercial
-│   ├── logistica.ts       # Contenido del área Logística
-│   └── index.ts           # Funciones de selección y filtrado
-├── components/
-│   ├── Layout.tsx          # Navegación superior + móvil
-│   ├── ProgressBar.tsx     # Barra de progreso de sesión
-│   ├── QuizMode.tsx        # Modo quiz (opción múltiple)
-│   ├── ExerciseMode.tsx    # Modo ejercicio numérico
-│   └── FlashcardMode.tsx   # Modo flashcard con Leitner
-├── pages/
-│   ├── Dashboard.tsx       # Inicio con stats y accesos rápidos
-│   ├── PracticeSetup.tsx   # Selección área → tema → modo
-│   ├── PracticeSession.tsx # Sesión activa
-│   ├── Results.tsx         # Resumen de sesión
-│   └── Statistics.tsx      # Progreso por tema y área
-├── context/
-│   ├── ThemeContext.tsx    # Modo claro/oscuro
-│   └── ProgressContext.tsx
-└── hooks/
-    └── useProgress.ts     # Lógica de localStorage + Leitner
+src/lib/         tipos, comprobación numérica y diagnóstico de errores, guardado y repaso espaciado
+src/components/  tarjeta de ejercicio, recorrido de casos, práctica, calculadora
+src/content/     lecciones, casos, generadores, glosario, Excel, correos (los números se calculan en código)
+src/pages/       pantallas
+scripts/         comprobación de contenido
 ```
-
-## Añadir nuevos ejercicios / preguntas
-
-### 1. Añadir un quiz
-
-Edita `src/data/comercial.ts` o `src/data/logistica.ts` y añade un objeto de tipo `QuizQuestion`:
-
-```ts
-{
-  id: 'mi-tema-q99',            // único en todo el banco
-  type: 'quiz',
-  area: 'comercial',            // 'comercial' | 'logistica'
-  topic: 'margenes-markup',     // ver lista en topics.ts
-  difficulty: 'medio',          // 'facil' | 'medio' | 'dificil'
-  question: '¿Pregunta?',
-  options: [
-    { id: 'a', text: 'Opción A' },
-    { id: 'b', text: 'Opción B' },
-    { id: 'c', text: 'Opción C' },
-    { id: 'd', text: 'Opción D' },
-  ],
-  correctOptionId: 'b',
-  explanation: 'Explicación de por qué B es correcto...',
-},
-```
-
-### 2. Añadir un ejercicio numérico
-
-```ts
-{
-  id: 'mi-tema-e99',
-  type: 'ejercicio',
-  area: 'logistica',
-  topic: 'eoq',
-  difficulty: 'dificil',
-  title: 'Título corto del ejercicio',
-  statement: 'Enunciado completo del problema.',
-  data: {
-    'Variable A': '100 ud',
-    'Variable B': '50 €',
-  },
-  formula: 'Resultado = A × B',
-  steps: [
-    { description: 'Paso 1', formula: '100 × 50', result: '5.000' },
-    { description: 'Paso 2', result: 'Resultado final' },
-  ],
-  answer: 5000,          // número exacto
-  tolerance: 0.01,       // tolerancia: 0.01 = ±1 %
-  unit: '€',
-  hint: 'Pista para el alumno si falla.',
-},
-```
-
-### 3. Añadir una flashcard
-
-```ts
-{
-  id: 'mi-tema-f99',
-  type: 'flashcard',
-  area: 'comercial',
-  topic: 'kpis-comerciales',
-  difficulty: 'facil',
-  front: 'Pregunta o término que aparece en el anverso',
-  back: 'Respuesta o definición en el reverso',
-  formula: 'Fórmula opcional (aparece destacada)',
-  example: 'Ejemplo numérico opcional',
-},
-```
-
-### 4. Añadir un nuevo tema
-
-Edita `src/data/topics.ts` y añade un objeto `TopicMeta`. Luego añade el nuevo id al tipo `Topic` en `types.ts`.
-
-## Sistema Leitner (flashcards)
-
-Las flashcards siguen el algoritmo de Leitner con 5 cajas:
-
-| Caja | Intervalo de repaso |
-|------|---------------------|
-| 1    | 1 hora              |
-| 2    | 1 día               |
-| 3    | 3 días              |
-| 4    | 7 días              |
-| 5    | 14 días             |
-
-"La sabía" → sube de caja. "No la sabía" → vuelve a la caja 1.
-
-## Temas disponibles
-
-**Comercial:** Márgenes y Markup · Descuentos · IVA e Impuestos · Punto de Equilibrio · Comisiones · Previsión de Ventas · KPIs Comerciales
-
-**Logística:** Rotación de Inventario · Stock de Seguridad · EOQ · Costes de Almacenamiento · Costes de Transporte · Contenedores y Palés · Incoterms · KPIs Logísticos
